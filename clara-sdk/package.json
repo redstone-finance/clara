@@ -1,0 +1,38 @@
+{
+  "name": "redstone-clara-sdk",
+  "version": "0.0.5",
+  "description": "A SDK for C.L.A.R.A.",
+  "homepage": "https://github.com/warp-contracts/clara/tree/main/clara-sdk",
+  "main": "./lib/index.cjs",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node test/test.mjs"
+  },
+  "files": [
+    "lib/",
+    "docs/",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "arweave",
+    "ao",
+    "redstone",
+    "agents",
+    "ai"
+  ],
+  "author": "Just PPE",
+  "license": "MIT",
+  "dependencies": {
+    "@permaweb/aoconnect": "^0.0.62",
+    "arweave": "^1.15.5",
+    "exponential-backoff": "^3.1.1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
+  }
+}

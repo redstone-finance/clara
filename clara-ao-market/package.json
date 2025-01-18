@@ -1,0 +1,25 @@
+{
+    "name": "redstone-clara-ao-market",
+    "type": "module",
+    "scripts": {
+        "test": "node --test test",
+        "spawn": "node process/spawn.js",
+        "register-agent": "node process/registerAgent.js",
+        "register-task": "node process/registerTask.js",
+        "send-result": "node process/sendResult.js",
+        "list-agents": "node process/listAgents.js",
+        "decline-task": "node process/declineTask.js",
+        "tasks-queue": "node process/tasksQueue.js",
+        "dispatch-tasks": "node process/dispatchTasks.js",
+        "register-chat": "node process/registerChatTask.js",
+        "chat-result": "node process/sendChatResult.js",
+        "update": "node process/update.js"
+    },
+    "devDependencies": {
+        "@permaweb/ao-loader": "0.0.44",
+        "@permaweb/aoconnect": "^0.0.62",
+        "arweave": "^1.15.5",
+        "exponential-backoff": "^3.1.1",
+        "redstone-clara-sdk": "0.0.3"
+    }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "clara-virtuals-example",
+  "version": "0.0.4",
+  "description": "An example integration of C.L.A.R.A. with virtuals agents",
+  "homepage": "https://github.com/warp-contracts/clara/tree/main/clara-virtuals-example",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node test/test.mjs"
+  },
+  "author": "Just PPE",
+  "license": "MIT",
+  "dependencies": {
+    "redstone-clara-sdk": "0.0.4",
+    "@virtuals-protocol/game": "^0.1.6"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
+  }
+}

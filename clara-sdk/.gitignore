@@ -1,0 +1,14 @@
+node_modules
+/out
+
+.env
+.env.production
+.env.local
+.env_main
+
+.idea
+.DS_Store
+
+dist/
+lib/
+.secrets
