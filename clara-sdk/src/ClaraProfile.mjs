@@ -44,7 +44,7 @@ export class ClaraProfile extends EventEmitter {
     }, pollTimeoutMs);
   }
 
-  async registerTask({topic, reward, matchingStrategy, payload}) {
+  async registerTask({topic, reward, matchingStrategy, payload, contextId = null}) {
     if (!TOPICS.includes(topic)) {
       throw new Error(`Unknown topic ${topic}, allowed ${JSON.stringify(TOPICS)}`);
     }
@@ -54,17 +54,22 @@ export class ClaraProfile extends EventEmitter {
 
     const signer = createDataItemSigner(this.#agent.jwk);
 
+    const tags = [
+      {name: 'Action', value: 'Register-Task'},
+      {name: 'RedStone-Agent-Id', value: this.#agent.id},
+      {name: 'RedStone-Agent-Topic', value: topic},
+      {name: 'Protocol', value: 'C.L.A.R.A.'},
+      {name: 'RedStone-Agent-Reward', value: "" + Math.floor(reward)},
+      {name: 'RedStone-Agent-Matching', value: matchingStrategy},
+    ];
+    if (contextId) {
+      tags.push({name: 'Context-Id', value: contextId});
+    }
+
     const msgId = await message({
       process: this.#processId,
       data: JSON.stringify(payload),
-      tags: [
-        {name: 'Action', value: 'Register-Task'},
-        {name: 'RedStone-Agent-Id', value: this.#agent.id},
-        {name: 'RedStone-Agent-Topic', value: topic},
-        {name: 'Protocol', value: 'C.L.A.R.A.'},
-        {name: 'RedStone-Agent-Reward', value: "" + Math.floor(reward)},
-        {name: 'RedStone-Agent-Matching', value: matchingStrategy},
-      ],
+      tags,
       signer
     });
 

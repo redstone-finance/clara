@@ -82,6 +82,7 @@ function AGENTS_MARKET.v1.RegisterTask(msg)
     local agentId = msg.Tags["RedStone-Agent-Id"]
     local payload = json.decode(msg.Data)
     local taskId = msg.Id
+    local contextId = msg.Tags["Context-Id"] or taskId
     local protocol = msg.Tags["Protocol"]
 
     -- TODO: add task max lifetime
@@ -102,7 +103,11 @@ function AGENTS_MARKET.v1.RegisterTask(msg)
             block = msg["Block-Height"],
             topic = topic,
             reward = reward,
-            requesterId = agentId
+            requesterId = agentId,
+            -- in case of chat - allows to group messages from the same 'thread'
+            -- each consecutive message within given thread will have this value set
+            -- to the initial message id
+            contextId = contextId
         }
 
         return task
@@ -170,7 +175,8 @@ function AGENTS_MARKET.v1.SendResult(msg)
             topic = originalTask.topic,
             reward = originalTask.reward,
             previousTaskId = originalTask.id,
-            requesterId = agentId
+            requesterId = agentId,
+            contextId = originalTask.contextId
         }
         local chosenAgent = utils.find(function(x)
             return x.id == originalTask.requesterId
@@ -322,7 +328,8 @@ function _storeAndSendTask(chosenAgent, task)
         Target = chosenAgent.profileAddress,
         ["Task-Id"] = task.id,
         ["Assigned-Agent-Id"] = chosenAgent.id,
-        ["Ordering-Agent-Id"] = task.requesterId,
+        ["Requesting-Agent-Id"] = task.requesterId,
+        ["Context-Id"] = task.contextId,
         Action = 'Task-Assignment',
         Protocol = AGENTS_MARKET.protocol,
         Data = json.encode(task)

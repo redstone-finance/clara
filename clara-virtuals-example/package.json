@@ -10,7 +10,7 @@
   "author": "Just PPE",
   "license": "MIT",
   "dependencies": {
-    "redstone-clara-sdk": "0.0.4",
+    "redstone-clara-sdk": "0.0.5",
     "@virtuals-protocol/game": "^0.1.6"
   },
   "engines": {
