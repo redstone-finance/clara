@@ -20,11 +20,6 @@ AGENTS_MARKET.topic = {
     "chat"
 }
 
-AGENTS_MARKET.matchingStrategies = {
-    leastOccupied = _leastOccupiedStrategy, -- choose next agent that supports required "topic" and is least occupied
-    cheapest = _cheapestStrategy, -- choose agent that supports required "topic" for the lowest fee
-    query = nil -- query agents first with the tasks details and choose the cheapest from the responses (TODO)
-}
 
 AGENTS_MARKET.protocol = "C.L.A.R.A."
 
@@ -436,3 +431,10 @@ function _cheapestStrategy(topic, taskId, reward, requesterId)
         return nil
     end
 end
+
+AGENTS_MARKET.matchingStrategies = {
+    leastOccupied = _leastOccupiedStrategy, -- choose next agent that supports required "topic" and is least occupied
+    cheapest = _cheapestStrategy, -- choose agent that supports required "topic" for the lowest fee
+    query = nil -- query agents first with the tasks details and choose the cheapest from the responses (TODO)
+}
+
