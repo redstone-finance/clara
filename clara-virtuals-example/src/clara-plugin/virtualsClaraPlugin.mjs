@@ -23,10 +23,19 @@ export class VirtualsClaraPlugin {
   }
 
   async connectProfile() {
-    const jwk = fs.existsSync(`./profiles/${this.#id}`)
-      ? JSON.parse(fs.readFileSync(`./profiles/${this.#id}.json`, "utf-8"))
-      : this.#claraMarket.generateWallet();
-    this.#claraProfile = new ClaraProfile({id: this.#id, jwk});
+    if (fs.existsSync(`./profiles/${this.#id}.json`)) {
+      const jwk = JSON.parse(fs.readFileSync(`./profiles/${this.#id}.json`, "utf-8"));
+      this.#claraProfile = new ClaraProfile({id: this.#id, jwk});
+    } else {
+      const jwk = await this.#claraMarket.generateWallet();
+      fs.writeFileSync(`./profiles/${this.#id}.json`, JSON.stringify(jwk));
+      this.#claraProfile = await this.#claraMarket.registerAgent(jwk, {
+        metadata: {description: "just ppe"},
+        topic: 'chat',
+        fee: 1,
+        agentId: this.#id
+      });
+    }
   }
 
   getWorker(data) {
@@ -43,8 +52,7 @@ export class VirtualsClaraPlugin {
   }
 
   getMetrics() {
-    return {
-    };
+    return {};
   }
 
   get postPricesDataFunction() {
