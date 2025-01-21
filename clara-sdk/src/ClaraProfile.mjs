@@ -100,6 +100,10 @@ export class ClaraProfile extends EventEmitter {
       }
     } else {
       console.log('Task added to queue');
+      return {
+        taskId: msgId,
+        info: "Task added to queue"
+      }
     }
   }
 
