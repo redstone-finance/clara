@@ -5,6 +5,7 @@ export async function fetchTransactions(agentAddress, processId, after) {
     'Content-Type': 'application/json',
   };
 
+  // FIXME: pass params properly
   const body = JSON.stringify({
     query: `query {
       transactions(
