@@ -13,7 +13,7 @@
     "@virtuals-protocol/game": "^0.1.6",
     "@virtuals-protocol/game-twitter-plugin": "0.1.1",
     "dotenv": "^16.4.7",
-    "redstone-clara-sdk": "0.0.9"
+    "redstone-clara-sdk": "0.0.12"
   },
   "engines": {
     "node": ">=20"
