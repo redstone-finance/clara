@@ -1,6 +1,11 @@
 import {ClaraMarket, ClaraProfile} from "redstone-clara-sdk";
 import fs from "node:fs";
-import {GameFunction, GameWorker} from "@virtuals-protocol/game";
+import {
+  ExecutableGameFunctionResponse,
+  ExecutableGameFunctionStatus,
+  GameFunction,
+  GameWorker
+} from "@virtuals-protocol/game";
 
 export class VirtualsClaraPlugin {
   #id;
@@ -44,8 +49,8 @@ export class VirtualsClaraPlugin {
       name: this.#name,
       description: this.#description,
       functions: [
-        this.postPricesDataFunction,
-        this.searchForPricesRequest,
+        this.loadMessages,
+        this.postMessages,
       ],
       getEnvironment: this.getMetrics.bind(this),
     });
@@ -55,11 +60,26 @@ export class VirtualsClaraPlugin {
     return {};
   }
 
-  get postPricesDataFunction() {
-    return new GameFunction({});
+  get loadMessages() {
+    return new GameFunction({
+      name: "search_messages",
+      description: "Search messages",
+      args: [] ,
+      executable: async (args, logger) => {
+        logger(`Searching for new messages`);
+        try {
+
+        } catch (e) {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Failed to search tweets"
+          );
+        }
+      }
+    });
   }
 
-  get searchForPricesRequest() {
+  get postMessages() {
     return new GameFunction({});
   }
 

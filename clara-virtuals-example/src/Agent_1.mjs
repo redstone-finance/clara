@@ -1,29 +1,88 @@
+import 'dotenv/config'
+import fs from "node:fs";
 // Create an agent with the worker
-import {GameAgent} from "@virtuals-protocol/game";
-import {VirtualsClaraPlugin} from "./clara-plugin/virtualsClaraPlugin.mjs";
+import {
+  ExecutableGameFunctionResponse,
+  ExecutableGameFunctionStatus,
+  GameAgent,
+  GameFunction, GameWorker
+} from "@virtuals-protocol/game";
+import {ClaraMarket, ClaraProfile} from "redstone-clara-sdk";
 
-const claraPlugin = new VirtualsClaraPlugin();
+// import {VirtualsClaraPlugin} from "./clara-plugin/virtualsClaraPlugin.mjs";
 
-const agent = new GameAgent("API_KEY", {
-  name: "Twitter Bot",
-  goal: "increase engagement and grow follower count",
-  description: "A bot that can post tweets, reply to tweets, and like tweets",
-  workers: [
-    claraPlugin.getWorker({
-      // Define the functions that the worker can perform, by default it will use the all functions defined in the plugin
-      // functions: [
-      //   twitterPlugin.searchTweetsFunction,
-      //   twitterPlugin.replyTweetFunction,
-      //   twitterPlugin.postTweetFunction,
-      // ],
-      // Define the environment variables that the worker can access, by default it will use the metrics defined in the plugin
-      // getEnvironment: async () => ({
-      //   ...(await twitterPlugin.getMetrics()),
-      //   username: "virtualsprotocol",
-      //   token_price: "$100.00",
-      // }),
-    }),
+// const claraPlugin = new VirtualsClaraPlugin();
+
+const AGENT_ID = "VIRTUALS_CLARA_NFT_AGENT_1";
+
+async function connectClaraProfile(id) {
+  if (fs.existsSync(`./profiles/${id}.json`)) {
+    const jwk = JSON.parse(fs.readFileSync(`./profiles/${id}.json`, "utf-8"));
+    return new ClaraProfile({id, jwk});
+  } else {
+    const claraMarket = new ClaraMarket();
+    const {wallet, address} = await claraMarket.generateWallet();
+    console.log("generated new wallet", address);
+    fs.writeFileSync(`./profiles/${id}.json`, JSON.stringify(wallet));
+    return claraMarket.registerAgent(wallet, {
+      metadata: {},
+      topic: 'nft',
+      fee: 1000000,
+      agentId: id
+    });
+  }
+}
+
+const claraProfile = await connectClaraProfile(AGENT_ID);
+
+
+const generateNftTask = new GameFunction({
+  name: "generate_nft_task_for_clara",
+  description: "Generate an image",
+  args: [
+    {
+      name: "image_description",
+      description: "The description of the image to generate",
+    },
   ],
+  executable: async (args, logger) => {
+    try {
+      logger(`Generating nft task: ${args.image_description}`);
+
+      const result = await claraProfile.registerTask({
+        topic: "nft",
+        reward: 200,
+        matchingStrategy: "leastOccupied",
+        payload: args.image_description
+      });
+
+      return new ExecutableGameFunctionResponse(
+        ExecutableGameFunctionStatus.Done,
+        `New nft task created in CLARA market with id ${result.taskId}`
+      );
+    } catch (e) {
+      console.error(e);
+      return new ExecutableGameFunctionResponse(
+        ExecutableGameFunctionStatus.Failed,
+        "Failed to create nft task in CLARA market"
+      );
+    }
+  },
+});
+
+
+const worker = new GameWorker({
+  id: "clara",
+  name: "clara",
+  description: "Clara worker",
+  functions: [generateNftTask],
+});
+
+const agent = new GameAgent(process.env.VIRTUALS_AGENT_API_KEY, {
+  name: "Beaver Bot",
+  goal: "generate NFTs with cyberpunk beavers with weapons",
+  description: "A bot that can communicate with other Agents and ask them to generate nft",
+  workers: [worker],
 });
 
 (async () => {

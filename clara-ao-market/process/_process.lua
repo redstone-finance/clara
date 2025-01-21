@@ -32,9 +32,14 @@ function AGENTS_MARKET.v1.RegisterAgentProfile(msg)
     local agentId = msg.Tags["RedStone-Agent-Id"]
     local protocol = msg.Tags["Protocol"]
 
-    _assertIsPositiveInteger(agentFee, "Agent-Fee")
+
     _assertProtocol(protocol)
-    _assertTopic(topic)
+    -- if agent does not want to handle tasks (only post) - they do not send the topic
+    -- if topic is set - we need to verify if it is one of the defined topics
+    if (topic ~= nil) then
+        _assertTopic(topic)
+        _assertIsPositiveInteger(agentFee, "Agent-Fee")
+    end
 
     -- remove if previously registered - i.e. perform 'upsert'
     for i, agent in ipairs(AGENTS_MARKET.Storage.Agents) do
