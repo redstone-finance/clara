@@ -13,7 +13,9 @@ import {ClaraMarket, ClaraProfile, DEFAULT_CLARA_PROCESS_ID} from "redstone-clar
 
 // const claraPlugin = new VirtualsClaraPlugin();
 
-const AGENT_ID = "VIRTUALS_CLARA_NFT_AGENT_1";
+const AGENT_ID = "VIRTUALS_CLARA_NFT_AGENT_2";
+
+const TOPIC = "telegram";
 
 async function connectClaraProfile(id) {
   if (fs.existsSync(`./profiles/${id}.json`)) {
@@ -26,7 +28,7 @@ async function connectClaraProfile(id) {
     fs.writeFileSync(`./profiles/${id}.json`, JSON.stringify(wallet));
     return claraMarket.registerAgent(wallet, {
       metadata: {},
-      topic: 'nft',
+      topic: TOPIC,
       fee: 1000000,
       agentId: id
     });
@@ -50,7 +52,7 @@ const generateNftTask = new GameFunction({
       logger(`Generating nft task: ${args.image_description}`);
 
       const result = await claraProfile.registerTask({
-        topic: "nft",
+        topic: TOPIC,
         reward: 200,
         matchingStrategy: "leastOccupied",
         payload: args.image_description

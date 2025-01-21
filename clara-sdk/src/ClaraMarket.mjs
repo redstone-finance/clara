@@ -1,7 +1,7 @@
 import Arweave from 'arweave';
 import {createDataItemSigner, dryrun, message} from "@permaweb/aoconnect";
 import {ClaraProfile} from "./ClaraProfile.mjs";
-import {containsTagWithValue, getMessageResult} from "./commons.mjs";
+import {getMessageResult, messageWithTags} from "./commons.mjs";
 
 export const DEFAULT_CLARA_PROCESS_ID = "CS5biQW6v2PsT3HM19P_f8Fj8UGYnFFNF8O6sfZ1jLc";
 
@@ -59,7 +59,7 @@ export class ClaraMarket {
     });
 
     const result =  await getMessageResult(this.#processId, id);
-    if (containsTagWithValue(result, {name: "Action", value: "Registered"})) {
+    if (messageWithTags(result, [{name: "Action", value: "Registered"}])) {
       console.log(`Registered Agent Message: https://www.ao.link/#/message/${id}`);
       return new ClaraProfile({id: agentId, jwk}, this.#processId);
     } else {
