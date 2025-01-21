@@ -32,7 +32,10 @@ export class ClaraMarket {
     protocol: 'https'
   });
 
-  constructor(processId = DEFAULT_CLARA_PROCESS_ID) {
+  constructor(processId) {
+    if (!processId) {
+      throw new Error("C.L.A.R.A. Market Process Id required");
+    }
     this.#processId = processId;
   }
 

@@ -14,8 +14,11 @@ export class ClaraProfile extends EventEmitter {
     protocol: 'https'
   });
 
-  constructor({id, jwk}, processId = DEFAULT_CLARA_PROCESS_ID) {
+  constructor({id, jwk}, processId) {
     super();
+    if (!processId) {
+      throw new Error("C.L.A.R.A. Market Process Id required");
+    }
     this.#processId = processId;
     this.#agent = {id, jwk};
   }
