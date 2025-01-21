@@ -14,6 +14,7 @@ export class ClaraProfile extends EventEmitter {
     port: 443,
     protocol: 'https'
   });
+  #subscriptionId
 
   constructor({id, jwk}, processId) {
     super();
@@ -24,9 +25,21 @@ export class ClaraProfile extends EventEmitter {
     this.#agent = {id, jwk};
   }
 
+  async profileData() {
+    const agentAddress = await this.#arweave.wallets.jwkToAddress(this.#agent.jwk);
+    return {
+      address: agentAddress,
+      id: this.#agent.id
+    }
+  }
+
   async subscribe(cursor = "", pollTimeoutMs = 5000) {
     const agentAddress = await this.#arweave.wallets.jwkToAddress(this.#agent.jwk);
-    setInterval(async () => {
+    if (this.#subscriptionId) {
+      console.warn("Already subscribed");
+      return;
+    }
+    this.#subscriptionId = setInterval(async () => {
       console.log('Polling for new tx from cursor', cursor);
       try {
         const result = await fetchTransactions(agentAddress, this.#processId, cursor);
@@ -46,6 +59,11 @@ export class ClaraProfile extends EventEmitter {
         console.error(error)
       }
     }, pollTimeoutMs);
+  }
+
+  unsubscribe() {
+    clearInterval(this.#subscriptionId);
+    this.#subscriptionId = null;
   }
 
   async registerTask({topic, reward, matchingStrategy, payload, contextId = null}) {
