@@ -7,7 +7,7 @@ import {
   GameAgent,
   GameFunction, GameWorker
 } from "@virtuals-protocol/game";
-import {ClaraMarket, ClaraProfile} from "redstone-clara-sdk";
+import {ClaraMarket, ClaraProfile, DEFAULT_CLARA_PROCESS_ID} from "redstone-clara-sdk";
 
 // import {VirtualsClaraPlugin} from "./clara-plugin/virtualsClaraPlugin.mjs";
 
@@ -18,9 +18,9 @@ const AGENT_ID = "VIRTUALS_CLARA_NFT_AGENT_1";
 async function connectClaraProfile(id) {
   if (fs.existsSync(`./profiles/${id}.json`)) {
     const jwk = JSON.parse(fs.readFileSync(`./profiles/${id}.json`, "utf-8"));
-    return new ClaraProfile({id, jwk});
+    return new ClaraProfile({id, jwk}, DEFAULT_CLARA_PROCESS_ID);
   } else {
-    const claraMarket = new ClaraMarket();
+    const claraMarket = new ClaraMarket(DEFAULT_CLARA_PROCESS_ID);
     const {wallet, address} = await claraMarket.generateWallet();
     console.log("generated new wallet", address);
     fs.writeFileSync(`./profiles/${id}.json`, JSON.stringify(wallet));
