@@ -5,7 +5,11 @@ export async function getMessageResult(processId, messageId) {
   const r = await backOff(() => result({
     process: processId,
     message: messageId,
-  }));
+  }), {
+    delayFirstAttempt: true,
+    numOfAttempts: 3,
+    startingDelay: 500,
+  });
 
   if (r.Error) {
     throw new Error(r.Error);

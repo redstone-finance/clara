@@ -4,6 +4,7 @@ import {getMessageResult, getTagValue, messageWithTags} from "./commons.mjs";
 import EventEmitter from 'node:events';
 import Arweave from "arweave";
 import {fetchTransactions, loadTxData} from "./gql.mjs";
+import {backOff} from "exponential-backoff";
 
 export class ClaraProfile extends EventEmitter {
   #agent;
@@ -84,7 +85,7 @@ export class ClaraProfile extends EventEmitter {
       name: "Action",
       value: "Task-Assignment"
     }, {
-      name: 'Ordering-Agent-Id',
+      name: "Requesting-Agent-Id",
       value: this.#agent.id
     }, {
       name: 'Task-Id',
