@@ -57,10 +57,9 @@ function AGENTS_MARKET.v1.RegisterAgentProfile(msg)
         metadata = json.decode(msg.Data),
         tasks = {
             inbox = {}, -- tasks to be processed by this Agent
-            outbox = {}, -- results of the the tasks processed by this Agent
+            results = {}, -- results of the the tasks requested by this Agent
             declined = {}   --  array of IDs of the tasks declined by this Agent
-        },
-        declinedTasks = {}
+        }
     })
 
     _dispatchTasks()
@@ -138,6 +137,10 @@ function AGENTS_MARKET.v1.SendResult(msg)
     assert(originalTask.agentId == agentId, "Agent was not assigned to task")
     assert(agent.profileAddress == agentAddr, "Sender address for " .. agentId .. " not same as registered")
 
+    local requestingAgent = utils.find(function(x)
+        return x.id == originalTask.requesterId
+    end)(AGENTS_MARKET.Storage.Agents)
+
     local responseData = {
         id = taskId,
         agentId = agentId,
@@ -147,8 +150,13 @@ function AGENTS_MARKET.v1.SendResult(msg)
         block = msg["Block-Height"],
         originalTask = originalTask
     }
+
     agent.tasks.inbox[taskId] = nil
-    agent.tasks.outbox[taskId] = responseData;
+    if (requestingAgent.tasks.results == nil) then
+        requestingAgent.tasks.results = {}
+    end
+    requestingAgent.tasks.results[taskId] = responseData;
+
     Send({
         Target = recipient,
         ["Task-Id"] = taskId,
@@ -176,13 +184,11 @@ function AGENTS_MARKET.v1.SendResult(msg)
             requesterId = agentId,
             contextId = originalTask.contextId
         }
-        local chosenAgent = utils.find(function(x)
-            return x.id == originalTask.requesterId
-        end)(AGENTS_MARKET.Storage.Agents)
-        task.reward = chosenAgent.fee
-        task.agentId = chosenAgent.id
-        assert(chosenAgent ~= nil, "Chat topic receiver agent not found " .. originalTask.requesterId)
-        _storeAndSendTask(chosenAgent, task)
+
+        task.reward = requestingAgent.fee
+        task.agentId = requestingAgent.id
+        assert(requestingAgent ~= nil, "Chat topic receiver agent not found " .. originalTask.requesterId)
+        _storeAndSendTask(requestingAgent, task)
     end
 end
 
@@ -271,6 +277,37 @@ function AGENTS_MARKET.v1.LoadNextAssignedTask(msg)
     end
 end
 
+function AGENTS_MARKET.v1.LoadNextTaskResult(msg)
+    local agentAddr = msg.From
+    local agentId = msg.Tags["RedStone-Agent-Id"]
+    local protocol = msg.Tags["Protocol"]
+
+    _assertProtocol(protocol)
+    _assertAgentRegistered(agentId, agentAddr)
+    local agent = utils.find(function(x)
+        return x.id == agentId
+    end)(AGENTS_MARKET.Storage.Agents)
+    assert(agent ~= nil, "Agent with " .. agentId .. " not found")
+
+    if (#utils.keys(agent.tasks.results) > 0) then
+        for key, task in pairs(agent.tasks.results) do
+            msg.reply({
+                Action = "Load-Next-Task-Result-Response",
+                Protocol = AGENTS_MARKET.protocol,
+                Data = json.encode(task)
+            })
+            agent.tasks.results[key] = nil
+            return
+        end
+    else
+        msg.reply({
+            Action = "Load-Next-Task-Result-Response",
+            Protocol = AGENTS_MARKET.protocol,
+            Data = json.encode({})
+        })
+    end
+end
+
 -- ======= HANDLERS REGISTRATION
 Handlers.add(
         "AGENTS_MARKET.v1.RegisterAgentProfile",
@@ -318,6 +355,11 @@ Handlers.add(
         "AGENTS_MARKET.v1.LoadNextAssignedTask",
         Handlers.utils.hasMatchingTagOf("Action", { "Load-Next-Assigned-Task", "v1.Load-Next-Assigned-Task" }),
         AGENTS_MARKET.v1.LoadNextAssignedTask
+)
+Handlers.add(
+        "AGENTS_MARKET.v1.LoadNextTaskResult",
+        Handlers.utils.hasMatchingTagOf("Action", { "Load-Next-Task-Result", "v1.Load-Next-Task-Result" }),
+        AGENTS_MARKET.v1.LoadNextTaskResult
 )
 
 -- ======= ASSERTS

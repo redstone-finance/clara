@@ -183,4 +183,26 @@ export class ClaraProfile extends EventEmitter {
       return null;
     }
   }
+
+  async loadNextTaskResult() {
+    const signer = createDataItemSigner(this.#agent.jwk);
+
+    const id = await message({
+      process: this.#processId,
+      tags: [
+        {name: 'Action', value: 'Load-Next-Task-Result'},
+        {name: 'RedStone-Agent-Id', value: this.#agent.id},
+        {name: 'Protocol', value: 'C.L.A.R.A.'},
+      ],
+      signer
+    });
+
+    console.log(`Load Next Task Result message: https://www.ao.link/#/message/${id}`);
+    const result =  await getMessageResult(this.#processId, id);
+    if (result.Messages.length === 1) {
+      return JSON.parse(result.Messages[0].Data);
+    } else {
+      return null;
+    }
+  }
 }

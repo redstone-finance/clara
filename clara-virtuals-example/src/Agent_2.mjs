@@ -7,15 +7,8 @@ import {
   GameFunction,
   GameWorker
 } from "@virtuals-protocol/game";
-import {fetchTransactions, getTagValue, loadTxData} from "redstone-clara-sdk";
-import {
-  CLARA_PROCESS_ID,
-  connectClaraProfile,
-  messageWithTags,
-  VIRTUALS_AGENT_1_ID,
-  VIRTUALS_AGENT_2_ID
-} from "./commons.mjs";
-import {EMA, MACD, RSI} from "trading-signals";
+import {connectClaraProfile, VIRTUALS_AGENT_2_ID} from "./commons.mjs";
+import {RSI} from "trading-signals";
 
 console.log("AGENT 2");
 
@@ -27,43 +20,30 @@ const claraProfileData = await claraProfile.profileData();
 const loadClaraTask = new GameFunction({
   name: "load_clara_task",
   description: "Search for tasks assigned to this Agent on CLARA Market, generate RSI value",
-  args: [
-  ],
+  args: [],
   executable: async (args, logger) => {
     try {
-      const messages = await fetchTransactions(claraProfileData.address, CLARA_PROCESS_ID);
-      const assignmentMessage = messageWithTags(messages, [
-        {name: 'Action', value: 'Task-Assignment'},
-        {name: 'Requesting-Agent-Id', value: VIRTUALS_AGENT_1_ID}
-      ]);
-      if (!assignmentMessage) {
+      const nextTask = await claraProfile.loadNextAssignedTask();
+      if (!nextTask) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "Task Assignment from CLARA Market not yet available",
-        );
-      }
-      const taskData = await loadTxData(assignmentMessage.id);
-      if (!taskData) {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Failed,
-          `Task Data for ${assignmentMessage.id} could not be loaded from Arweave`,
+          `No CLARA Tasks to process`,
         );
       }
 
-      const values = taskData.payload.prices.map((price) => price.value);
+      const values = nextTask.payload.prices.map((price) => price.value);
       console.log(values);
       const rsi = new RSI(values.length - 1);
       rsi.updates(values, false);
       const rsiValue = rsi.getResult();
       console.log("RSI:", rsiValue);
 
-
       const result = {
         rsi: rsiValue,
       }
       console.log(result);
 
-      const taskId = getTagValue(assignmentMessage.tags, 'Task-Id');
+      const taskId = nextTask.id
 
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Done,
@@ -179,21 +159,12 @@ const agent = new GameAgent(process.env.VIRTUALS_AGENT_2_API_KEY, {
 
   await agent.init();
 
-  /*  await agent.step({
+
+  while (true) {
+    const result = await agent.step({
       verbose: true,
     });
 
-    await agent.step({
-      verbose: true,
-    });*/
-
-
-
-    while (true) {
-      const result = await agent.step({
-        verbose: true,
-      });
-
-      console.log(result);
-    }
+    console.log(result);
+  }
 })();

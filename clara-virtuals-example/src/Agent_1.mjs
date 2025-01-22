@@ -112,20 +112,9 @@ const loadClaraTaskResult = new GameFunction({
   name: "load_clara_task_result",
   description: "Loads task result from CLARA Market",
   args: [
-    {
-      name: "claraTaskId",
-      description: "A task id for which the result should be loaded passed from the generate_clara_task function",
-      optional: false,
-      type: "string"
-    },
   ],
   executable: async (args, logger) => {
     try {
-      console.log(`Args claraTaskId`, args.claraTaskId);
-      const taskId = args.claraTaskId;
-      if (!taskId) {
-        throw new Error("Task Id to load result not set");
-      }
 
       const edges = await fetchTransactions(claraProfileData.address, CLARA_PROCESS_ID);
       const taskResult = messageWithTags(edges, [{name: 'Task-Id', value: taskId}]);
@@ -159,11 +148,23 @@ const loadClaraTaskResult = new GameFunction({
 });
 
 
-const worker = new GameWorker({
-  id: "clara",
-  name: "clara",
-  description: "A worker that talks to other Agents through CLARA Market.",
-  functions: [chooseTokenFunction, generateClaraTask, loadClaraTaskResult],
+const worker_1 = new GameWorker({
+  id: "clara worker 1",
+  name: "clara worker 1",
+  description: "A worker that sends tasks to other Agents through CLARA Market.",
+  functions: [chooseTokenFunction, generateClaraTask],
+  getEnvironment: async () => {
+    return {
+      lastCheckTime: 0
+    };
+  },
+});
+
+const worker_2 = new GameWorker({
+  id: "clara worker 2",
+  name: "clara worker 2",
+  description: "W worker that loads tasks results from CLARA market",
+  functions: [loadClaraTaskResult],
   getEnvironment: async () => {
     return {
       lastCheckTime: 0
@@ -174,10 +175,10 @@ const worker = new GameWorker({
 const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
   name: "RedStone Agent",
   goal: "Perform a technical analysis on a randomly chosen token" +
-    "  Load the token data from the RedStone Oracles. Having the data, send Task to another Agent using the CLARA Market to perform technical analysis" +
-    " using requested indicator and generate long/short position recommendation based on the response. Wait for the task response if it is not available.",
+    "  Load the token data from the RedStone Oracles. Having the data, send Task to another Agent using the CLARA Market to perform technical analysis." +
+    " Load results and publish them on telegram",
   description: "A bot that performs technical analysis using data from RedStone Oracles.",
-  workers: [worker],
+  workers: [worker_1, worker_2],
   getAgentState: async () => {
     return {}
   },
@@ -191,23 +192,6 @@ const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
   });
 
   await agent.init();
-
-  /*  await agent.step({
-      verbose: true,
-    });
-
-    await agent.step({
-      verbose: true,
-    });
-
-    await agent.step({
-      verbose: true,
-    });
-
-    await agent.step({
-      verbose: true,
-    });*/
-
 
   while (true) {
     const result = await agent.step({
