@@ -1,5 +1,4 @@
 import 'dotenv/config'
-import fs from "node:fs";
 // Create an agent with the worker
 import {
   ExecutableGameFunctionResponse,
@@ -8,51 +7,24 @@ import {
   GameFunction,
   GameWorker
 } from "@virtuals-protocol/game";
-import {ClaraMarket, ClaraProfile, DEFAULT_CLARA_PROCESS_ID, fetchTransactions} from "redstone-clara-sdk";
+import {fetchTransactions, loadTxData} from "redstone-clara-sdk";
+import {
+  CLARA_PROCESS_ID,
+  connectClaraProfile,
+  loadRedStoneFeeds,
+  messageWithTags,
+  TOPIC,
+  VIRTUALS_AGENT_1_ID
+} from "./commons.mjs";
 
-const AGENT_ID = "VIRTUALS_CLARA_NFT_AGENT_2";
-
-const CLARA_PROCESS_ID = DEFAULT_CLARA_PROCESS_ID;
-
-function getRedStoneApiUrl({symbol, from, to}) {
-  return `https://api.redstone.finance/prices?provider=redstone-primary-prod&symbol=${symbol}&forceInflux=true&fromTimestamp=${from}&toTimestamp=${to}&interval=3600000`
-}
-
-const TOPIC = "chat";
-
-
-async function connectClaraProfile(id) {
-  if (fs.existsSync(`./profiles/${id}.json`)) {
-    const jwk = JSON.parse(fs.readFileSync(`./profiles/${id}.json`, "utf-8"));
-    return new ClaraProfile({id, jwk}, CLARA_PROCESS_ID);
-  } else {
-    const claraMarket = new ClaraMarket(CLARA_PROCESS_ID);
-    const {wallet, address} = await claraMarket.generateWallet();
-    console.log("generated new wallet", address);
-    fs.writeFileSync(`./profiles/${id}.json`, JSON.stringify(wallet));
-    return claraMarket.registerAgent(wallet, {
-      metadata: {},
-      topic: TOPIC,
-      fee: 1000000,
-      agentId: id
-    });
-  }
-}
 
 // CLARA Market profile related to this Virtuals Agent
-const claraProfile = await connectClaraProfile(AGENT_ID);
+const claraProfile = await connectClaraProfile(VIRTUALS_AGENT_1_ID);
 const claraProfileData = await claraProfile.profileData();
-
-const results = {}
-
-claraProfile.on('Task-Result', (msg) => {
-  console.log("Task-Result", msg);
-
-});
 
 const chooseTokenFunction = new GameFunction({
   name: "choose_token_function",
-  description: "Chooses next token to analyse depending on last update time sentiment on X.",
+  description: "Chooses next token to analyse based on sentiment on X.",
   args: [
     {
       // passing values from Worker.Environment does not work deterministically
@@ -63,7 +35,7 @@ const chooseTokenFunction = new GameFunction({
   ],
   executable: async (args, logger) => {
     try {
-      // TODO: add some logic to choose token - maybe by recent activity on X?
+      // TODO: add some logic to choose token - by recent activity on X
       console.log("lastCheckTime ", args.lastCheckTime);
       let lastCheckTime;
       try {
@@ -111,21 +83,7 @@ const generateClaraTask = new GameFunction({
         throw new Error("Token to check not determined");
       }
 
-      const response = await fetch(getRedStoneApiUrl({
-        symbol: args.tokenToCheck,
-        from: Date.now() - 5 * 86400 * 1000,
-        to: Date.now()
-      }));
-      if (!response.ok) {
-        throw new Error('Could not load data from RedStone Oracles api')
-      }
-      const result = (await response.json()).map(feed => {
-        return {
-          symbol: feed.symbol,
-          value: feed.value,
-          timestamp: feed.timestamp,
-        }
-      });
+      const result = await loadRedStoneFeeds(args.tokenToCheck);
       console.log("Loaded prices length ", result.length);
 
       // now kindly ask CLARA Market for some Agent that have technical analysis capabilities
@@ -148,7 +106,6 @@ const generateClaraTask = new GameFunction({
           `No CLARA Agent could be assigned to the required task`
         );
       }
-
 
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Done,
@@ -183,32 +140,26 @@ const loadClaraTaskResult = new GameFunction({
         throw new Error("Task Id to load result not set");
       }
 
-      function messageWithTags(result, requiredTags) {
-        for (let msg of result) {
-          let foundTags = 0;
-          for (let requiredTag of requiredTags) {
-            if (msg.tags.find(({name, value}) => name === requiredTag.name && value === requiredTag.value)) {
-              foundTags++;
-            }
-            if (foundTags === requiredTags.length) {
-              return msg;
-            }
-          }
-        }
-      }
-
-      const messages = await fetchTransactions(claraProfileData.address, CLARA_PROCESS_ID);
-      const taskResult = messageWithTags(messages, [{name: 'Task-Id', value: taskId}]);
+      const edges = await fetchTransactions(claraProfileData.address, CLARA_PROCESS_ID);
+      const taskResult = messageWithTags(edges, [{name: 'Task-Id', value: taskId}]);
       if (!taskResult) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
           "Task Result from CLARA Market not yet available. Try again in a few seconds with the same claraTaskId",
         );
       }
+      const taskData = await loadTxData(taskResult.id);
+      if (!taskData) {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          `Task Data for ${taskId} could not be loaded from Arweave`,
+        );
+      }
+      const {rsi, macd} = taskData.result;
 
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Done,
-        `Task result from CLARA Market: ${JSON.stringify(taskResult)}`
+        `Task result from CLARA Market: RSI: ${rsi}, MACD: ${macd})}`
       );
     } catch (e) {
       console.error(e);
