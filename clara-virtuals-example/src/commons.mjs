@@ -1,10 +1,10 @@
 import fs from "node:fs";
 
-import {ClaraMarket, ClaraProfile, DEFAULT_CLARA_PROCESS_ID} from "redstone-clara-sdk";
+import {ClaraMarket, ClaraProfile} from "redstone-clara-sdk";
 
 export const VIRTUALS_AGENT_1_ID = "VIRTUALS_CLARA_AGENT_1";
 export const VIRTUALS_AGENT_2_ID = "VIRTUALS_CLARA_AGENT_2";
-export const CLARA_PROCESS_ID = DEFAULT_CLARA_PROCESS_ID;
+export const CLARA_PROCESS_ID = "-pya7ISoqovL_N6D5FvyFqQIrSA9OBG5b33csucqbeU";
 export const TOPIC = "chat";
 
 function getRedStoneApiUrl({symbol, from, to}) {

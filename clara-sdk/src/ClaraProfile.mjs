@@ -1,4 +1,4 @@
-import {createDataItemSigner, message} from "@permaweb/aoconnect";
+import {createDataItemSigner, dryrun, message} from "@permaweb/aoconnect";
 import {DEFAULT_CLARA_PROCESS_ID, MATCHERS, TOPICS} from "./ClaraMarket.mjs";
 import {getMessageResult, getTagValue, messageWithTags} from "./commons.mjs";
 import EventEmitter from 'node:events';
@@ -160,5 +160,27 @@ export class ClaraProfile extends EventEmitter {
 
     console.log(`Decline Task message: https://www.ao.link/#/message/${id}`);
     return await getMessageResult(this.#processId, id);
+  }
+
+  async loadNextAssignedTask() {
+    const signer = createDataItemSigner(this.#agent.jwk);
+
+    const id = await message({
+      process: this.#processId,
+      tags: [
+        {name: 'Action', value: 'Load-Next-Assigned-Task'},
+        {name: 'RedStone-Agent-Id', value: this.#agent.id},
+        {name: 'Protocol', value: 'C.L.A.R.A.'},
+      ],
+      signer
+    });
+
+    console.log(`Load Next Assigned Task message: https://www.ao.link/#/message/${id}`);
+    const result =  await getMessageResult(this.#processId, id);
+    if (result.Messages.length === 1) {
+      return JSON.parse(result.Messages[0].Data);
+    } else {
+      return null;
+    }
   }
 }

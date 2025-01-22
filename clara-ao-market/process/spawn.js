@@ -9,7 +9,7 @@ console.info(`Spawning AOS Agent Market Lua process`);
 
 const {spawn, message} = connect();
 
-const WALLET = JSON.parse(fs.readFileSync("../../../warp-internal/wallet/arweave/oracle_mu_su_cu/jwk.json", "utf-8"));
+const WALLET = JSON.parse(fs.readFileSync("../../warp-internal/wallet/arweave/oracle_mu_su_cu/jwk.json", "utf-8"));
 const CODE = fs.readFileSync("./process/_process.lua", "utf-8");
 
 async function doSpawn() {

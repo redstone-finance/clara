@@ -24,37 +24,24 @@ const claraProfileData = await claraProfile.profileData();
 
 const chooseTokenFunction = new GameFunction({
   name: "choose_token_function",
-  description: "Chooses next token to analyse based on sentiment on X.",
+  description: "Chooses a random crypto token to check from: ETH, BTC, ADA, BNB, XRP, AR, DOGE, AVAX, MATIC, ARB",
   args: [
-    {
+    /*{
       // passing values from Worker.Environment does not work deterministically
-      name: "lastCheckTime",
-      description: "Last check time",
+      name: "tokenToCheck",
+      description: "Choose one random token to check from: ETH, BTC, ADA, BNB, XRP, AR, DOGE, AVAX, MATIC, ARB",
       optional: false
-    },
+    },*/
   ],
   executable: async (args, logger) => {
     try {
-      // TODO: add some logic to choose token - by recent activity on X
-      console.log("lastCheckTime ", args.lastCheckTime);
-      let lastCheckTime;
-      try {
-        lastCheckTime = parseInt(args.lastCheckTime);
-      } catch (e) {
-        console.error(e);
-      }
-      const now = Date.now();
-      if (!lastCheckTime || now - lastCheckTime > 3600 * 1000) {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Done,
-          `tokenToCheck: "BTC", lastCheckTime: ${Date.now()}`
-        );
-      } else {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Failed,
-          `Not enough time have passed since last check`
-        );
-      }
+      const tokens = ["ETH", "BTC", "ADA", "BNB", "XRP", "AR", "DOGE", "AVAX", "MATIC", "ARB"];
+      const randomToken = tokens[Math.floor(Math.random() * tokens.length)];
+      // TODO: add some logic to choose token - e.g. by recent activity on X or trigger from TG message?
+      return new ExecutableGameFunctionResponse(
+        ExecutableGameFunctionStatus.Done,
+        `tokenToCheck: "${randomToken}"`
+      );
     } catch (e) {
       console.error(e);
       return new ExecutableGameFunctionResponse(
@@ -90,7 +77,7 @@ const generateClaraTask = new GameFunction({
       // and can return buy/sell recommendation
       const task = await claraProfile.registerTask({
         topic: TOPIC,
-        reward: 200,
+        reward: 2000000,
         matchingStrategy: "leastOccupied",
         payload: {
           // the technical indicators that should be measured
@@ -155,17 +142,17 @@ const loadClaraTaskResult = new GameFunction({
           `Task Data for ${taskId} could not be loaded from Arweave`,
         );
       }
-      const {rsi, macd} = taskData.result;
+      const result = taskData.result;
 
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Done,
-        `Task result from CLARA Market: RSI: ${rsi}, MACD: ${macd})}`
+        `Task result from CLARA Market: ${JSON.stringify(result)})}`
       );
     } catch (e) {
       console.error(e);
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Failed,
-        "Could not load data from CLARA Market. Try again in a few seconds with the same claraTaskId",
+        `Could not load data from CLARA Market. Try 5 times with the same claraTaskId, after that start from scratch. claraTaskId=${args.claraTaskId}`,
       );
     }
   },
@@ -184,11 +171,11 @@ const worker = new GameWorker({
   },
 });
 
-const agent = new GameAgent(process.env.VIRTUALS_AGENT_API_KEY, {
+const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
   name: "RedStone Agent",
-  goal: "Perform a technical analysis on a token chosen based on sentiment analysis from tweets on X platform." +
+  goal: "Perform a technical analysis on a randomly chosen token" +
     "  Load the token data from the RedStone Oracles. Having the data, send Task to another Agent using the CLARA Market to perform technical analysis" +
-    " using requested indicator and generate long/short position recommendation based on the response.",
+    " using requested indicator and generate long/short position recommendation based on the response. Wait for the task response if it is not available.",
   description: "A bot that performs technical analysis using data from RedStone Oracles.",
   workers: [worker],
   getAgentState: async () => {
@@ -205,29 +192,28 @@ const agent = new GameAgent(process.env.VIRTUALS_AGENT_API_KEY, {
 
   await agent.init();
 
-  await agent.step({
-    verbose: true,
-  });
+  /*  await agent.step({
+      verbose: true,
+    });
 
-  await agent.step({
-    verbose: true,
-  });
+    await agent.step({
+      verbose: true,
+    });
 
-  await agent.step({
-    verbose: true,
-  });
+    await agent.step({
+      verbose: true,
+    });
 
-  await agent.step({
-    verbose: true,
-  });
+    await agent.step({
+      verbose: true,
+    });*/
 
 
-  /*
-    while (true) {
-      const result = await agent.step({
-        verbose: true,
-      });
+  while (true) {
+    const result = await agent.step({
+      verbose: true,
+    });
 
-      console.log(result);
-    }*/
+    console.log(result);
+  }
 })();

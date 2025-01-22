@@ -20,7 +20,6 @@ AGENTS_MARKET.topic = {
     "chat"
 }
 
-
 AGENTS_MARKET.protocol = "C.L.A.R.A."
 
 AGENTS_MARKET.v1 = AGENTS_MARKET.v1 or {}
@@ -31,7 +30,6 @@ function AGENTS_MARKET.v1.RegisterAgentProfile(msg)
     local agentFee = msg.Tags["RedStone-Agent-Fee"];
     local agentId = msg.Tags["RedStone-Agent-Id"]
     local protocol = msg.Tags["Protocol"]
-
 
     _assertProtocol(protocol)
     -- if agent does not want to handle tasks (only post) - they do not send the topic
@@ -243,6 +241,36 @@ function AGENTS_MARKET.v1.TasksQueue(msg)
     })
 end
 
+function AGENTS_MARKET.v1.LoadNextAssignedTask(msg)
+    local agentAddr = msg.From
+    local agentId = msg.Tags["RedStone-Agent-Id"]
+    local protocol = msg.Tags["Protocol"]
+
+    _assertProtocol(protocol)
+    _assertAgentRegistered(agentId, agentAddr)
+    local agent = utils.find(function(x)
+        return x.id == agentId
+    end)(AGENTS_MARKET.Storage.Agents)
+    assert(agent ~= nil, "Agent with " .. agentId .. " not found")
+
+    if (#utils.keys(agent.tasks.inbox) > 0) then
+        for _, task in pairs(agent.tasks.inbox) do
+            msg.reply({
+                Action = "Load-Next-Assigned-Task-Result",
+                Protocol = AGENTS_MARKET.protocol,
+                Data = json.encode(task)
+            })
+            return
+        end
+    else
+        msg.reply({
+            Action = "Load-Next-Assigned-Task-Result",
+            Protocol = AGENTS_MARKET.protocol,
+            Data = json.encode({})
+        })
+    end
+end
+
 -- ======= HANDLERS REGISTRATION
 Handlers.add(
         "AGENTS_MARKET.v1.RegisterAgentProfile",
@@ -286,11 +314,13 @@ Handlers.add(
         AGENTS_MARKET.v1.DispatchTasks
 )
 
+Handlers.add(
+        "AGENTS_MARKET.v1.LoadNextAssignedTask",
+        Handlers.utils.hasMatchingTagOf("Action", { "Load-Next-Assigned-Task", "v1.Load-Next-Assigned-Task" }),
+        AGENTS_MARKET.v1.LoadNextAssignedTask
+)
+
 -- ======= ASSERTS
-function _assertAgentBelongsToSender(agentId, senderAddr)
-
-end
-
 function _assertProtocol(protocol)
     assert(protocol == AGENTS_MARKET.protocol,
             "Unknown protocol " .. protocol .. "supported: " .. AGENTS_MARKET.protocol)

@@ -1,18 +1,14 @@
 import fs from "node:fs";
 import {ClaraProfile, DEFAULT_CLARA_PROCESS_ID} from "../src/index.mjs";
 
-const agentId = "PPE_AGENT_SDK_2"
-const taskId = "MKMxxD56-TS6E3ZRrsBHp1HmHxIN_Ze3FurFlx3hVTE";
+const agentId = "VIRTUALS_CLARA_AGENT_2";
 
 const agent = new ClaraProfile({
   id: agentId,
   jwk: JSON.parse(fs.readFileSync(`./test/${agentId}.json`, "utf-8"))
-}, DEFAULT_CLARA_PROCESS_ID);
+}, "-pya7ISoqovL_N6D5FvyFqQIrSA9OBG5b33csucqbeU");
 
-const result = await agent.sendTaskResult({
-  taskId: taskId,
-  result: {response: "Oops I did it again"}
-});
+const result = await agent.loadNextAssignedTask();
 
 
 console.dir(result, {depth: null});
