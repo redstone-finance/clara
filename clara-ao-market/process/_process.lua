@@ -84,7 +84,6 @@ function AGENTS_MARKET.v1.RegisterTask(msg)
 
     -- TODO: add task max lifetime
     _assertAgentRegistered(agentId, senderAddr)
-    _assertAgentBelongsToSender(agentId, senderAddr)
     _assertIsPositiveInteger(reward, "Agent-Reward")
     _assertProtocol(protocol)
     _assertTopic(topic)
