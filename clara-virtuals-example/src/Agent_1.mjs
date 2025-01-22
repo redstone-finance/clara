@@ -1,5 +1,4 @@
 import 'dotenv/config'
-// Create an agent with the worker
 import {
   ExecutableGameFunctionResponse,
   ExecutableGameFunctionStatus,
@@ -7,12 +6,10 @@ import {
   GameFunction,
   GameWorker
 } from "@virtuals-protocol/game";
-import {fetchTransactions, loadTxData} from "redstone-clara-sdk";
 import {
-  CLARA_PROCESS_ID,
   connectClaraProfile,
   loadRedStoneFeeds,
-  messageWithTags,
+  sendToTelegram,
   TOPIC,
   VIRTUALS_AGENT_1_ID
 } from "./commons.mjs";
@@ -71,7 +68,7 @@ const generateClaraTask = new GameFunction({
       }
 
       const result = await loadRedStoneFeeds(args.tokenToCheck);
-      console.log("Loaded prices length ", result.length);
+      logger(`Loaded prices length ${result.length}`);
 
       // now kindly ask CLARA Market for some Agent that have technical analysis capabilities
       // and can return buy/sell recommendation
@@ -86,7 +83,7 @@ const generateClaraTask = new GameFunction({
         }
       });
 
-      console.log(task);
+      logger("Function " + JSON.stringify(task));
       if (!task.assignedAgentId) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
@@ -115,33 +112,29 @@ const loadClaraTaskResult = new GameFunction({
   ],
   executable: async (args, logger) => {
     try {
+      const result = await claraProfile.loadNextTaskResult();
+      if (!result) {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          `No pending tasks results in CLARA Market`,
+        );
+      }
 
-      const edges = await fetchTransactions(claraProfileData.address, CLARA_PROCESS_ID);
-      const taskResult = messageWithTags(edges, [{name: 'Task-Id', value: taskId}]);
-      if (!taskResult) {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Failed,
-          "Task Result from CLARA Market not yet available. Try again in a few seconds with the same claraTaskId",
-        );
+      const logObject = {
+        taskId: result.originalTask.id,
+        agentId: result.agentId,
+        result: result.result // not enough result
       }
-      const taskData = await loadTxData(taskResult.id);
-      if (!taskData) {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Failed,
-          `Task Data for ${taskId} could not be loaded from Arweave`,
-        );
-      }
-      const result = taskData.result;
 
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Done,
-        `Task result from CLARA Market: ${JSON.stringify(result)})}`
+        `Task result from CLARA Market: ${JSON.stringify(logObject)})}`
       );
     } catch (e) {
       console.error(e);
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Failed,
-        `Could not load data from CLARA Market. Try 5 times with the same claraTaskId, after that start from scratch. claraTaskId=${args.claraTaskId}`,
+        `Could not load data from CLARA Market.`,
       );
     }
   },
@@ -151,34 +144,31 @@ const loadClaraTaskResult = new GameFunction({
 const worker_1 = new GameWorker({
   id: "clara worker 1",
   name: "clara worker 1",
-  description: "A worker that sends tasks to other Agents through CLARA Market.",
-  functions: [chooseTokenFunction, generateClaraTask],
+  description: "A worker that sends tasks to other Agents through CLARA Market. It also checks whether tasks responses are available on Clara",
+  functions: [chooseTokenFunction, generateClaraTask, loadClaraTaskResult],
   getEnvironment: async () => {
     return {
-      lastCheckTime: 0
     };
   },
 });
 
-const worker_2 = new GameWorker({
+/*const worker_2 = new GameWorker({
   id: "clara worker 2",
   name: "clara worker 2",
-  description: "W worker that loads tasks results from CLARA market",
+  description: "A worker that loads tasks results from CLARA market",
   functions: [loadClaraTaskResult],
   getEnvironment: async () => {
-    return {
-      lastCheckTime: 0
-    };
+    return {};
   },
-});
+});*/
 
 const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
   name: "RedStone Agent",
   goal: "Perform a technical analysis on a randomly chosen token" +
     "  Load the token data from the RedStone Oracles. Having the data, send Task to another Agent using the CLARA Market to perform technical analysis." +
-    " Load results and publish them on telegram",
+    " Check for results of posted tasks on CLARA Market and if available, send them to telegram",
   description: "A bot that performs technical analysis using data from RedStone Oracles.",
-  workers: [worker_1, worker_2],
+  workers: [worker_1],
   getAgentState: async () => {
     return {}
   },
@@ -187,6 +177,13 @@ const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
 (async () => {
   agent.setLogger((agent, message) => {
     console.log(`-----[${agent.name}]-----`);
+    if (message.startsWith("Performing")
+      || message.startsWith("Function")
+      || message.startsWith("Performing")
+    ) {
+      sendToTg(message).finally()
+    }
+
     console.log(message);
     console.log("\n");
   });
@@ -199,5 +196,13 @@ const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
     });
 
     console.log(result);
+    sendToTg(result).finally()
   }
 })();
+
+async function sendToTg(msg) {
+  await sendToTelegram(msg, {
+    tgChatId: process.env.TG_CHAT_ID,
+    tgBotToken: process.env.CLARA_1_TG_BOT_TOKEN
+  })
+}

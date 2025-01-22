@@ -68,3 +68,17 @@ export function messageWithTags(edges, requiredTags) {
     }
   }
 }
+
+export const sendToTelegram = async (msg, config) => {
+  const tgMessage = msg.substring(0, 4000);
+  const tgUrlPrefix = "https://api.telegram.org";
+  const tgChatId = config.tgChatId;
+  const tgBotToken = config.tgBotToken;
+  if (tgChatId && tgBotToken) {
+    await fetch(
+      `${tgUrlPrefix}/bot${tgBotToken}/sendMessage?chat_id=${tgChatId}&disable_notification=false&text=${encodeURIComponent(tgMessage)}`
+    );
+  } else {
+    console.log(`TG_CHAT_ID or TG_BOT_TOKEN not configured, log won't be sent`);
+  }
+};

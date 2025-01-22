@@ -13,7 +13,7 @@
     "@virtuals-protocol/game": "^0.1.6",
     "@virtuals-protocol/game-twitter-plugin": "0.1.1",
     "dotenv": "^16.4.7",
-    "redstone-clara-sdk": "0.0.13",
+    "redstone-clara-sdk": "0.0.14",
     "trading-signals": "^6.0.1"
   },
   "engines": {

@@ -1,5 +1,4 @@
 import 'dotenv/config'
-// Create an agent with the worker
 import {
   ExecutableGameFunctionResponse,
   ExecutableGameFunctionStatus,
@@ -7,15 +6,13 @@ import {
   GameFunction,
   GameWorker
 } from "@virtuals-protocol/game";
-import {connectClaraProfile, VIRTUALS_AGENT_2_ID} from "./commons.mjs";
+import {connectClaraProfile, sendToTelegram, VIRTUALS_AGENT_2_ID} from "./commons.mjs";
 import {RSI} from "trading-signals";
 
 console.log("AGENT 2");
 
 // CLARA Market profile related to this Virtuals Agent
 const claraProfile = await connectClaraProfile(VIRTUALS_AGENT_2_ID);
-const claraProfileData = await claraProfile.profileData();
-
 
 const loadClaraTask = new GameFunction({
   name: "load_clara_task",
@@ -33,10 +30,22 @@ const loadClaraTask = new GameFunction({
 
       const values = nextTask.payload.prices.map((price) => price.value);
       console.log(values);
+      if (values.length === 0) {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          `No prices sent in the task`,
+        );
+      }
       const rsi = new RSI(values.length - 1);
       rsi.updates(values, false);
       const rsiValue = rsi.getResult();
       console.log("RSI:", rsiValue);
+      if (!rsiValue) {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          `RSI could not be calculated`,
+        );
+      }
 
       const result = {
         rsi: rsiValue,
@@ -105,25 +114,26 @@ const generateRecommendation = new GameFunction({
       }
 
       console.log("Sending result to the requesting agent");
+      const payload = {
+        rsi: args.rsi,
+        analysis: args.analysis,
+        analysis_reasoning: args.analysis_reasoning,
+      }
 
       const result = await claraProfile.sendTaskResult({
         taskId: args.task_id,
-        result: {
-          rsi: args.rsi,
-          analysis: args.analysis,
-          analysis_reasoning: args.analysis_reasoning,
-        }
-      })
+        result: payload
+      });
 
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Done,
-        `Done`,
+        `Analysis completed ${JSON.stringify(payload)}`,
       );
     } catch (e) {
       console.error(e);
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Failed,
-        "Could not load data from CLARA Market. Try again in a few seconds with the same claraTaskId",
+        "Could not generate recommendation based on the supplied data",
       );
     }
   },
@@ -142,7 +152,7 @@ const worker = new GameWorker({
 
 const agent = new GameAgent(process.env.VIRTUALS_AGENT_2_API_KEY, {
   name: "Clara Agent",
-  goal: "Analyses the calculated RSI value",
+  goal: "Analyse the calculated RSI value",
   description: "Perform technical analysis based on tasks loaded from CLARA market",
   workers: [worker],
   getAgentState: async () => {
@@ -153,6 +163,12 @@ const agent = new GameAgent(process.env.VIRTUALS_AGENT_2_API_KEY, {
 (async () => {
   agent.setLogger((agent, message) => {
     console.log(`-----[${agent.name}]-----`);
+    if (message.startsWith("Performing")
+      || message.startsWith("Function")
+      || message.startsWith("Performing")
+    ) {
+      sendToTg(message).finally()
+    }
     console.log(message);
     console.log("\n");
   });
@@ -166,5 +182,13 @@ const agent = new GameAgent(process.env.VIRTUALS_AGENT_2_API_KEY, {
     });
 
     console.log(result);
+    sendToTg(result).finally()
   }
 })();
+
+async function sendToTg(msg) {
+  await sendToTelegram(msg, {
+    tgChatId: process.env.TG_CHAT_ID,
+    tgBotToken: process.env.CLARA_2_TG_BOT_TOKEN
+  })
+}
