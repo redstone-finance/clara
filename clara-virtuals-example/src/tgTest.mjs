@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import {sendToTelegram} from "./commons.mjs";
 
-await sendToTelegram("Hey @just_ppe_55, you're so hot!", {
+await sendToTelegram("Hey @just_ppe_55", {
   tgChatId: process.env.TG_CHAT_ID,
   tgBotToken: process.env.CLARA_1_TG_BOT_TOKEN
 })

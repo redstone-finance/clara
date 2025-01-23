@@ -8,10 +8,8 @@ import {
 } from "@virtuals-protocol/game";
 import {connectClaraProfile, loadRedStoneFeeds, sendToTelegram, TOPIC, VIRTUALS_AGENT_1_ID} from "./commons.mjs";
 
-
 // CLARA Market profile related to this Virtuals Agent
 const claraProfile = await connectClaraProfile(VIRTUALS_AGENT_1_ID);
-let tgOffset = 783557337;
 
 const loadTelegramMentions = new GameFunction({
   name: "load telegram messages",
@@ -19,8 +17,8 @@ const loadTelegramMentions = new GameFunction({
   args: [],
   executable: async (args, logger) => {
     try {
+      // TODO: set offset
       const url = `https://api.telegram.org/bot${process.env.CLARA_1_TG_BOT_TOKEN}/getupdates`;
-      // console.log(url);
       const response = await fetch(url);
       const tgResult = await response.json();
       if (tgResult.result.length === 0) {
@@ -46,7 +44,6 @@ const loadTelegramMentions = new GameFunction({
         }
         break;
       }
-      tgOffset = tgResult.result[tgResult.result.length - 1].update_id + 1;
       if (tgMessage) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Done,
@@ -67,36 +64,6 @@ const loadTelegramMentions = new GameFunction({
     }
   },
 })
-
-/*const chooseTokenFunction = new GameFunction({
-  name: "choose_token_function",
-  description: "Chooses a random crypto token to check from: ETH, BTC, ADA, BNB, XRP, AR, DOGE, AVAX, MATIC, ARB",
-  args: [
-    {
-      // passing values from Worker.Environment does not work deterministically
-      name: "tokenToCheck",
-      description: "Choose one random token to check from: ETH, BTC, ADA, BNB, XRP, AR, DOGE, AVAX, MATIC, ARB",
-      optional: false
-    },
-  ],
-  executable: async (args, logger) => {
-    try {
-      const tokens = ["ETH", "BTC", "ADA", "BNB", "XRP", "AR", "DOGE", "AVAX", "MATIC", "ARB"];
-      const randomToken = tokens[Math.floor(Math.random() * tokens.length)];
-      // TODO: add some logic to choose token - e.g. by recent activity on X or trigger from TG message?
-      return new ExecutableGameFunctionResponse(
-        ExecutableGameFunctionStatus.Done,
-        `tokenToCheck: "${randomToken}"`
-      );
-    } catch (e) {
-      console.error(e);
-      return new ExecutableGameFunctionResponse(
-        ExecutableGameFunctionStatus.Failed,
-        "Could not determine token to check"
-      );
-    }
-  },
-})*/
 
 const generateClaraTask = new GameFunction({
   name: "generate_clara_task",

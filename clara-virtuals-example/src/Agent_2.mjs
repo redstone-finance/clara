@@ -9,8 +9,6 @@ import {
 import {connectClaraProfile, sendToTelegram, VIRTUALS_AGENT_2_ID} from "./commons.mjs";
 import {RSI} from "trading-signals";
 
-console.log("AGENT 2");
-
 // CLARA Market profile related to this Virtuals Agent
 const claraProfile = await connectClaraProfile(VIRTUALS_AGENT_2_ID);
 
