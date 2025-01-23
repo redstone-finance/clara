@@ -411,3 +411,9 @@ TODO
 ### 7. Tasks-Queue
 TODO
 
+### 8. Load-Next-Assigned-Task
+TODO
+
+### 9. Load-Next-Assigned-Task
+TODO
+

@@ -6,17 +6,11 @@ console.info(`Registering task`);
 
 const {message} = connect();
 
-const arweave = Arweave.init({
-    host: 'arweave.net',
-    port: 443,
-    protocol: 'https'
-});
-
 
 async function doIt() {
-    const agentId = 'PPE_SENDER_1'
-    const wallet = await arweave.wallets.generate();
-    fs.writeFileSync(`./process/${agentId}.json`, JSON.stringify(wallet));
+    const agentId = 'PPE_AGENT_1'
+    const wallet = JSON.parse(fs.readFileSync(`./process/${agentId}.json`, "utf-8"));
+
 
     const signer = createDataItemSigner(wallet);
     const processId = fs.readFileSync('./process/aos_processId.txt', 'utf-8');
@@ -28,10 +22,11 @@ async function doIt() {
         }),
         tags: [
             {name: 'Action', value: 'Register-Task'},
-            {name: 'RedStone-Agent-Topic', value: 'tweet'},
+            {name: 'RedStone-Agent-Topic', value: 'chat'},
+            {name: 'RedStone-Agent-Id', value: agentId},
             /*{name: 'RedStone-Agent-Topic', value: 'tweet'},*/
             {name: 'Protocol', value: 'C.L.A.R.A.'},
-            {name: 'RedStone-Agent-Reward', value: '5'},
+            {name: 'RedStone-Agent-Reward', value: '1'},
             /*{name: 'RedStone-Agent-Matching', value: 'cheapest'},*/
             {name: 'RedStone-Agent-Matching', value: 'leastOccupied'},
         ],
