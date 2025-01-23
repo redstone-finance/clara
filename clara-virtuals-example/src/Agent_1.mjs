@@ -1,4 +1,4 @@
-import 'dotenv/config'
+import 'dotenv/config';
 import {
   ExecutableGameFunctionResponse,
   ExecutableGameFunctionStatus,
@@ -19,7 +19,7 @@ const loadTelegramMentions = new GameFunction({
   args: [],
   executable: async (args, logger) => {
     try {
-      const url = `https://api.telegram.org/bot${process.env.CLARA_1_TG_BOT_TOKEN}/getupdates?offset=${tgOffset}`;
+      const url = `https://api.telegram.org/bot${process.env.CLARA_1_TG_BOT_TOKEN}/getupdates`;
       // console.log(url);
       const response = await fetch(url);
       const tgResult = await response.json();
@@ -29,7 +29,7 @@ const loadTelegramMentions = new GameFunction({
           `No new mentions on telegram`
         );
       }
-      let text = null;
+      let tgMessage;
       for (let message of tgResult.result) {
         if ("" + message.message?.chat?.id !== process.env.TG_CHAT_ID) {
           continue;
@@ -37,14 +37,20 @@ const loadTelegramMentions = new GameFunction({
         if (!message.message.entities?.find(e => e.type === "mention")) {
           continue;
         }
-        text = message.message.text;
+        if (!message.message.text.includes("@Clara_1_bot")) {
+          continue;
+        }
+        tgMessage = {
+          text: message.message.text,
+          from: message.message.from?.username
+        }
         break;
       }
       tgOffset = tgResult.result[tgResult.result.length - 1].update_id + 1;
-      if (text) {
+      if (tgMessage) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Done,
-          `Message from telegram: ${text}`
+          `Message from telegram: text=${tgMessage.text}, from=${tgMessage.from}`,
         );
       } else {
         return new ExecutableGameFunctionResponse(
@@ -102,16 +108,29 @@ const generateClaraTask = new GameFunction({
       optional: false,
       type: "string"
     },
+    {
+      name: "from",
+      description: "Author of the telegram message",
+      optional: false,
+      type: "string"
+    },
   ],
   executable: async (args, logger) => {
     try {
       console.log(`Args tokenToCheck`, args.tokenToCheck);
+      console.log(`Args from`, args.from);
       if (!args.tokenToCheck) {
         throw new Error("Token to check not determined");
       }
 
       const result = await loadRedStoneFeeds(args.tokenToCheck);
       logger(`Loaded prices length ${result.length}`);
+      if (result.length === 0) {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          "No prices returned from RedStone Oralces"
+        );
+      }
 
       // now kindly ask CLARA Market for some Agent that have technical analysis capabilities
       // and can return buy/sell recommendation
@@ -122,7 +141,9 @@ const generateClaraTask = new GameFunction({
         payload: {
           // the technical indicators that should be measured
           topicDetails: "['oscillator/RSI']",
-          prices: result
+          prices: result,
+          from: args.from,
+          token: args.tokenToCheck
         }
       });
 
@@ -165,7 +186,13 @@ const loadClaraTaskResult = new GameFunction({
       const logObject = {
         taskId: result.originalTask.id,
         agentId: result.agentId,
-        result: result.result // not enough result
+        result: result.result, // not enough result
+        from: result.originalTask.payload.from,
+        token: result.originalTask.payload.token
+      }
+
+      if (logObject.from) {
+        sendToTg(`@${logObject.from} - ${logObject.result.analysis} ${logObject.result.analysis_reasoning}`).then();
       }
 
       return new ExecutableGameFunctionResponse(
@@ -186,22 +213,22 @@ const loadClaraTaskResult = new GameFunction({
 const worker_1 = new GameWorker({
   id: "clara worker 1",
   name: "clara worker 1",
-  description: "A worker that sends tasks to other Agents through CLARA Market. It also checks whether tasks responses are available on Clara",
-  functions: [loadTelegramMentions, generateClaraTask, loadClaraTaskResult],
+  description: "A worker that sends tasks to other Agents through CLARA Market.",
+  functions: [loadTelegramMentions, generateClaraTask],
   getEnvironment: async () => {
     return {};
   },
 });
 
-/*const worker_2 = new GameWorker({
+const worker_2 = new GameWorker({
   id: "clara worker 2",
   name: "clara worker 2",
-  description: "A worker that loads tasks results from CLARA market",
+  description: "Checks whether tasks results CLARA Market and sends them to Telegram",
   functions: [loadClaraTaskResult],
   getEnvironment: async () => {
     return {};
   },
-});*/
+});
 
 const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
   name: "RedStone Agent",
@@ -209,7 +236,7 @@ const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
     "  Load the token data from the RedStone Oracles. Having the data, send Task to another Agent using the CLARA Market to perform technical analysis." +
     " Check for results of posted tasks on CLARA Market and if available, send them to telegram",
   description: "A bot that performs technical analysis using data from RedStone Oracles.",
-  workers: [worker_1],
+  workers: [worker_1, worker_2],
   getAgentState: async () => {
     return {}
   },

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import fs from "node:fs";
 
 import {ClaraMarket, ClaraProfile} from "redstone-clara-sdk";
@@ -39,10 +40,10 @@ export async function connectClaraProfile(id, fee) {
   console.log("profile id", id);
   if (fs.existsSync(`./profiles/${id}.json`)) {
     const jwk = JSON.parse(fs.readFileSync(`./profiles/${id}.json`, "utf-8"));
-    return new ClaraProfile({id, jwk}, CLARA_PROCESS_ID);
+    return new ClaraProfile({id, jwk}, process.env.CLARA_MARKET_PROCESS_ID);
   } else {
     console.log("generating new wallet");
-    const claraMarket = new ClaraMarket(CLARA_PROCESS_ID);
+    const claraMarket = new ClaraMarket(process.env.CLARA_MARKET_PROCESS_ID);
     const {wallet, address} = await claraMarket.generateWallet();
     console.log("generated new wallet", address);
     fs.writeFileSync(`./profiles/${id}.json`, JSON.stringify(wallet));
