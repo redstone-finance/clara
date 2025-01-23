@@ -8,11 +8,11 @@ AGENTS_MARKET = AGENTS_MARKET or {}
 AGENTS_MARKET._version = AGENTS_MARKET._version or version
 AGENTS_MARKET.Storage = AGENTS_MARKET.Storage or {
     Agents = {},
-    TasksQueue = {} -- queueueueueueueueueue
+    TasksQueue = {}, -- queueueueueueueueueue
+    balances = {},
 }
 
 AGENTS_MARKET.topic = {
-    "broadcast",
     "tweet",
     "discord",
     "telegram",
@@ -23,6 +23,10 @@ AGENTS_MARKET.topic = {
 AGENTS_MARKET.protocol = "C.L.A.R.A."
 
 AGENTS_MARKET.v1 = AGENTS_MARKET.v1 or {}
+
+-- PaymentsToken = "NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8"
+
+PaymentsToken = "hV9cSF1jB-K5JMNdfZCij9Shm5hO1Yb38B5mhKiad6w"
 
 function AGENTS_MARKET.v1.RegisterAgentProfile(msg)
     local profileAddr = msg.From
@@ -85,6 +89,7 @@ function AGENTS_MARKET.v1.RegisterTask(msg)
     -- TODO: add task max lifetime
     _assertAgentRegistered(agentId, senderAddr)
     _assertIsPositiveInteger(reward, "Agent-Reward")
+    _assertRequesterHasSufficientFunds(reward, senderAddr)
     _assertProtocol(protocol)
     _assertTopic(topic)
     _assertStrategy(matchingStrategy)
@@ -166,6 +171,17 @@ function AGENTS_MARKET.v1.SendResult(msg)
         Protocol = AGENTS_MARKET.protocol,
         Data = json.encode(responseData)
     })
+
+    local currentRequesterBalance = _walletBalance(requestingAgent.profileAddress)
+
+    local feeBint = bint(originalTask.reward)
+    local currentRequesterBalanceBint = bint(currentRequesterBalance)
+    if (currentRequesterBalanceBint < feeBint) then
+        -- what now?
+    end
+    AGENTS_MARKET.Storage.balances[requestingAgent.profileAddress] = tostring(currentRequesterBalanceBint - feeBint)
+
+    _transferTokens(msg.From, originalTask.reward)
 
     -- note - putting new message into "previous" message sender inbox
     if (originalTask.topic == "chat") then
@@ -295,6 +311,75 @@ function AGENTS_MARKET.v1.LoadNextTaskResult(msg)
     end
 end
 
+
+function AGENTS_MARKET.v1.AddTokens(msg)
+    local sender = msg.Tags.Sender
+    local Quantity = msg.Tags.Quantity
+
+    local current = _walletBalance(sender)
+    local newQuantity = tostring(bint(current) + bint(Quantity))
+    _storeWalletBalance(sender, newQuantity)
+
+    Send({
+        Target = sender,
+        ["New-Balance"] = newQuantity,
+        ["Added-Quantity"] = Quantity,
+        Action = 'Tokens-Locked',
+    })
+end
+
+
+function AGENTS_MARKET.v1.ClaimReward(msg)
+    local from = msg.From
+    local qty = msg.Tags.Quantity
+    _assertIsPositiveInteger(qty, "Quantity")
+    local qtyBint = bint(qty)
+
+    local currentBalance = _walletBalance(from)
+    local balanceBint = bint(currentBalance)
+    if (qtyBint > balanceBint) then
+        msg.reply({
+            Action = "Claim-Reward-Failed",
+            Protocol = AGENTS_MARKET.protocol,
+            Balance = currentBalance,
+        })
+        return
+    end
+
+    _storeWalletBalance(from, tostring(balanceBint - qtyBint))
+
+    _transferTokens(from, qty)
+end
+
+function AGENTS_MARKET.v1.ClaimRewardAll(msg)
+    local currentBalance = _walletBalance(msg.From)
+
+    _storeWalletBalance(msg.From, "0")
+    _transferTokens(msg.From, currentBalance)
+end
+
+function AGENTS_MARKET.v1.Balance(msg)
+    local wallet = msg.Tags.Recipient or msg.From
+    local balance = _walletBalance(wallet)
+
+    msg.reply({
+        Action = "Balance",
+        Protocol = AGENTS_MARKET.protocol,
+        Balance = balance,
+        Account = wallet,
+    })
+end
+
+function AGENTS_MARKET.v1.Balances(msg)
+    msg.reply({
+        Action = "Balances",
+        Protocol = AGENTS_MARKET.protocol,
+        Data = {
+            balances = json.encode(AGENTS_MARKET.Storage.balances)
+        }
+    })
+end
+
 -- ======= HANDLERS REGISTRATION
 Handlers.add(
         "AGENTS_MARKET.v1.RegisterAgentProfile",
@@ -349,6 +434,44 @@ Handlers.add(
         AGENTS_MARKET.v1.LoadNextTaskResult
 )
 
+Handlers.add(
+        "AGENTS_MARKET.v1.AddTokens",
+        function(msg)
+            return msg.Action == "Credit-Notice" and msg.From == PaymentsToken
+        end,
+        AGENTS_MARKET.v1.AddTokens
+)
+
+Handlers.add(
+        "AGENTS_MARKET.v1.AddTokensToAgent",
+        Handlers.utils.hasMatchingTagOf("Action", { "Add-Tokens-To-Agent", "v1.Add-Tokens-To-Agent" }),
+        AGENTS_MARKET.v1.AddTokensToAgent
+)
+
+Handlers.add(
+        "AGENTS_MARKET.v1.ClaimReward",
+        Handlers.utils.hasMatchingTagOf("Action", { "Claim-Reward", "v1.Claim-Reward" }),
+        AGENTS_MARKET.v1.ClaimReward
+)
+
+Handlers.add(
+        "AGENTS_MARKET.v1.ClaimRewardAll",
+        Handlers.utils.hasMatchingTagOf("Action", { "Claim-Reward-All", "v1.Claim-Reward-All" }),
+        AGENTS_MARKET.v1.ClaimRewardAll
+)
+
+Handlers.add(
+        "AGENTS_MARKET.v1.Balance",
+        Handlers.utils.hasMatchingTagOf("Action", { "Balance", "v1.Balance" }),
+        AGENTS_MARKET.v1.Balance
+)
+
+Handlers.add(
+        "AGENTS_MARKET.v1.Balances",
+        Handlers.utils.hasMatchingTagOf("Action", { "Balances", "v1.Balances" }),
+        AGENTS_MARKET.v1.Balances
+)
+
 -- ======= ASSERTS
 function _assertProtocol(protocol)
     assert(protocol == AGENTS_MARKET.protocol,
@@ -371,6 +494,15 @@ function _assertIsPositiveInteger(str, name)
     assert(num and num > 0 and math.floor(num) == num, "Value " .. name .. " must be positive integer")
 end
 
+function _assertRequesterHasSufficientFunds(str, requester)
+    local reward = tonumber(str)
+
+    local currentRequesterBalance = _walletBalance(requester)
+    local balance = bint(currentRequesterBalance)
+    assert(balance - reward >= 0,
+            "Requesting agent (" .. requester .. ") funds (" .. currentRequesterBalance .. ") are insufficient")
+end
+
 function _assertAgentRegistered(agentId, sender)
     assert(agentId ~= nil, 'Sender not registered as Agent')
     assert(utils.find(function(x)
@@ -382,16 +514,58 @@ end
 
 -- ======= PRIVATE FUNCTIONS
 function _storeAndSendTask(chosenAgent, task)
-    chosenAgent.tasks.inbox[task.id] = task;
+    local uniqueKey = task.id .. "_" .. chosenAgent.id
+    local taskCopy = {
+        id = uniqueKey,
+        requester = task.requester,
+        matchingStrategy = task.matchingStrategy,
+        payload = task.payload,
+        timestamp = task.timestamp,
+        block = task.block,
+        topic = task.topic,
+        reward = task.reward,
+        requesterId = task.requesterId,
+        contextId = task.contextId,
+        agentId = task.agentId
+    }
+
+    chosenAgent.tasks.inbox[uniqueKey] = taskCopy
+
     Send({
         Target = chosenAgent.profileAddress,
-        ["Task-Id"] = task.id,
+        ["Task-Id"] = uniqueKey,
         ["Assigned-Agent-Id"] = chosenAgent.id,
         ["Requesting-Agent-Id"] = task.requesterId,
         ["Context-Id"] = task.contextId,
         Action = 'Task-Assignment',
         Protocol = AGENTS_MARKET.protocol,
-        Data = json.encode(task)
+        Data = json.encode(taskCopy)
+    })
+end
+
+function _walletBalance(wallet)
+    if (AGENTS_MARKET.Storage.balances == nil) then
+        AGENTS_MARKET.Storage.balances = {}
+    end
+
+    if (AGENTS_MARKET.Storage.balances[wallet] == nil) then
+        AGENTS_MARKET.Storage.balances[wallet] = "0"
+    end
+
+    return AGENTS_MARKET.Storage.balances[wallet]
+end
+
+function _storeWalletBalance(wallet, qty)
+    _walletBalance(wallet)
+    AGENTS_MARKET.Storage.balances[wallet] = qty
+end
+
+function _transferTokens(to, quantity)
+    Send({
+        Target = PaymentsToken,
+        ["Action"] = 'Transfer',
+        Quantity = quantity,
+        Recipient = to
     })
 end
 
@@ -407,21 +581,23 @@ function _dispatchTasks()
     -- iterating backwards to make removing elements safe.
     local removedIndexes = {}
     for i = #AGENTS_MARKET.Storage.TasksQueue, 1, -1 do
-        local task = AGENTS_MARKET.Storage.TasksQueue[i]
         assert(i ~= nil, "duh")
-        if (task.topic == "broadcast") then
-            ao.log("broadcast") -- this shit ain't loggin'
-            -- TODO: this probably should be limited to only some whitelisted profiles?
-            for i in ipairs(AGENTS_MARKET.Storage.Agents) do
-                local agent = AGENTS_MARKET.Storage.Agents[i]
-                _storeAndSendTask(agent, task)
+        local task = AGENTS_MARKET.Storage.TasksQueue[i]
+        local matchAgent = AGENTS_MARKET.matchingStrategies[task.matchingStrategy]
+        assert(matchAgent ~= nil, "Could not assign matching function")
+
+        local chosenAgent = matchAgent(task.topic, task.id, task.reward, task.requesterId)
+        assert(chosenAgent ~= nil, "No agents to choose from")
+        if type(chosenAgent) == "table" and #chosenAgent > 0 then
+            for _, agent in ipairs(chosenAgent) do
+                if (agent ~= nil) then
+                    task.reward = agent.fee
+                    task.agentId = agent.id
+                    _storeAndSendTask(agent, task)
+                end
             end
-            table.remove(AGENTS_MARKET.Storage.TasksQueue, i)
             table.insert(removedIndexes, i)
         else
-            local matchAgent = AGENTS_MARKET.matchingStrategies[task.matchingStrategy]
-            assert(matchAgent ~= nil, "Could not assign matching function")
-            local chosenAgent = matchAgent(task.topic, task.id, task.reward, task.requesterId)
             if (chosenAgent ~= nil) then
                 task.reward = chosenAgent.fee
                 task.agentId = chosenAgent.id
@@ -449,6 +625,14 @@ function _filterAgentsWithTopicAndFeeAndNotDeclinedTask(topic, taskId, reward, r
                 and (requesterId == nil or (requesterId ~= x.id)) -- do not assign task to yourself :)
         )
     end)(AGENTS_MARKET.Storage.Agents)
+end
+
+function _broadcastStrategy(topic, taskId, reward, requesterId)
+    local agentsWithTopic = _filterAgentsWithTopicAndFeeAndNotDeclinedTask(topic, taskId, reward, requesterId)
+    if #agentsWithTopic == 0 then
+        return nil
+    end
+    return agentsWithTopic
 end
 
 function _leastOccupiedStrategy(topic, taskId, reward, requesterId)
@@ -497,6 +681,7 @@ function _cheapestStrategy(topic, taskId, reward, requesterId)
 end
 
 AGENTS_MARKET.matchingStrategies = {
+    broadcast = _broadcastStrategy,
     leastOccupied = _leastOccupiedStrategy, -- choose next agent that supports required "topic" and is least occupied
     cheapest = _cheapestStrategy, -- choose agent that supports required "topic" for the lowest fee
     query = nil -- query agents first with the tasks details and choose the cheapest from the responses (TODO)

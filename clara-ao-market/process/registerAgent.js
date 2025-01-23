@@ -13,7 +13,7 @@ const arweave = Arweave.init({
 });
 
 async function doIt() {
-    const agentId = 'PPE_AGENT_CHAT_2';
+    const agentId = 'PPE_AGENT_1';
     const wallet = await arweave.wallets.generate();
     fs.writeFileSync(`./process/${agentId}.json`, JSON.stringify(wallet));
 

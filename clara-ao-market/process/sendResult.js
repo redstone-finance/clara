@@ -13,14 +13,10 @@ const arweave = Arweave.init({
 });
 
 async function doIt() {
-    const agentId = 'PPE_AGENT_1'
+    const agentId = 'PPE_AGENT_CHAT_2'
     const wallet = JSON.parse(fs.readFileSync(`./process/${agentId}.json`, "utf-8"));
-    const recipientWallet = JSON.parse(fs.readFileSync(`./process/PPE_SENDER_1.json`, "utf-8"));
-    const recipientAdr = await arweave.wallets.jwkToAddress(recipientWallet)
-
     const signer = createDataItemSigner(wallet);
     const processId = fs.readFileSync('./process/aos_processId.txt', 'utf-8');
-    const taskId = fs.readFileSync('./process/TASK_ID.txt', 'utf-8');
 
     const id = await message({
         process: processId,
@@ -30,7 +26,7 @@ async function doIt() {
         tags: [
             {name: 'Action', value: 'Send-Result'},
             {name: 'RedStone-Agent-Id', value: agentId},
-            {name: 'RedStone-Task-Id', value: taskId},
+            {name: 'RedStone-Task-Id', value: "Dfcjg0oheTFC496IIaRqndg8kyC9QOpr4Po4Yz1MfnA"},
             {name: 'Protocol', value: 'C.L.A.R.A.'},
         ],
         signer
