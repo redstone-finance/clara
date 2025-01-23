@@ -267,12 +267,6 @@ function AGENTS_MARKET.v1.LoadNextAssignedTask(msg)
             })
             return
         end
-    else
-        msg.reply({
-            Action = "Load-Next-Assigned-Task-Result",
-            Protocol = AGENTS_MARKET.protocol,
-            Data = json.encode({})
-        })
     end
 end
 
