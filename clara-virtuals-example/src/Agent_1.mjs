@@ -6,29 +6,72 @@ import {
   GameFunction,
   GameWorker
 } from "@virtuals-protocol/game";
-import {
-  connectClaraProfile,
-  loadRedStoneFeeds,
-  sendToTelegram,
-  TOPIC,
-  VIRTUALS_AGENT_1_ID
-} from "./commons.mjs";
+import {connectClaraProfile, loadRedStoneFeeds, sendToTelegram, TOPIC, VIRTUALS_AGENT_1_ID} from "./commons.mjs";
 
 
 // CLARA Market profile related to this Virtuals Agent
 const claraProfile = await connectClaraProfile(VIRTUALS_AGENT_1_ID);
-const claraProfileData = await claraProfile.profileData();
+let tgOffset = 783557337;
 
-const chooseTokenFunction = new GameFunction({
+const loadTelegramMentions = new GameFunction({
+  name: "load telegram messages",
+  description: "Extract crypto token name from a telegram message",
+  args: [],
+  executable: async (args, logger) => {
+    try {
+      const url = `https://api.telegram.org/bot${process.env.CLARA_1_TG_BOT_TOKEN}/getupdates?offset=${tgOffset}`;
+      // console.log(url);
+      const response = await fetch(url);
+      const tgResult = await response.json();
+      if (tgResult.result.length === 0) {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          `No new mentions on telegram`
+        );
+      }
+      let text = null;
+      for (let message of tgResult.result) {
+        if ("" + message.message?.chat?.id !== process.env.TG_CHAT_ID) {
+          continue;
+        }
+        if (!message.message.entities?.find(e => e.type === "mention")) {
+          continue;
+        }
+        text = message.message.text;
+        break;
+      }
+      tgOffset = tgResult.result[tgResult.result.length - 1].update_id + 1;
+      if (text) {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Done,
+          `Message from telegram: ${text}`
+        );
+      } else {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          `No new mentions on telegram`
+        );
+      }
+    } catch (e) {
+      console.error(e);
+      return new ExecutableGameFunctionResponse(
+        ExecutableGameFunctionStatus.Failed,
+        `Could not load messages from telegram`
+      );
+    }
+  },
+})
+
+/*const chooseTokenFunction = new GameFunction({
   name: "choose_token_function",
   description: "Chooses a random crypto token to check from: ETH, BTC, ADA, BNB, XRP, AR, DOGE, AVAX, MATIC, ARB",
   args: [
-    /*{
+    {
       // passing values from Worker.Environment does not work deterministically
       name: "tokenToCheck",
       description: "Choose one random token to check from: ETH, BTC, ADA, BNB, XRP, AR, DOGE, AVAX, MATIC, ARB",
       optional: false
-    },*/
+    },
   ],
   executable: async (args, logger) => {
     try {
@@ -47,15 +90,15 @@ const chooseTokenFunction = new GameFunction({
       );
     }
   },
-})
+})*/
 
 const generateClaraTask = new GameFunction({
   name: "generate_clara_task",
-  description: "Loads prices data from RedStone Oracle based on the token chosen by the choose_token_function. Sends loaded prices as a Task to CLARA Market.",
+  description: "Loads prices data from RedStone Oracle based on the token chosen extracted from the telegram message. Sends loaded prices as a Task to CLARA Market.",
   args: [
     {
       name: "tokenToCheck",
-      description: "A token to load prices for passed from choose_token_function function",
+      description: "A token extracted from the telegram message",
       optional: false,
       type: "string"
     },
@@ -108,8 +151,7 @@ const generateClaraTask = new GameFunction({
 const loadClaraTaskResult = new GameFunction({
   name: "load_clara_task_result",
   description: "Loads task result from CLARA Market",
-  args: [
-  ],
+  args: [],
   executable: async (args, logger) => {
     try {
       const result = await claraProfile.loadNextTaskResult();
@@ -145,10 +187,9 @@ const worker_1 = new GameWorker({
   id: "clara worker 1",
   name: "clara worker 1",
   description: "A worker that sends tasks to other Agents through CLARA Market. It also checks whether tasks responses are available on Clara",
-  functions: [chooseTokenFunction, generateClaraTask, loadClaraTaskResult],
+  functions: [loadTelegramMentions, generateClaraTask, loadClaraTaskResult],
   getEnvironment: async () => {
-    return {
-    };
+    return {};
   },
 });
 
@@ -164,7 +205,7 @@ const worker_1 = new GameWorker({
 
 const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
   name: "RedStone Agent",
-  goal: "Perform a technical analysis on a randomly chosen token" +
+  goal: "Perform a technical analysis on a token loaded from a telegram message." +
     "  Load the token data from the RedStone Oracles. Having the data, send Task to another Agent using the CLARA Market to perform technical analysis." +
     " Check for results of posted tasks on CLARA Market and if available, send them to telegram",
   description: "A bot that performs technical analysis using data from RedStone Oracles.",

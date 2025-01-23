@@ -298,12 +298,6 @@ function AGENTS_MARKET.v1.LoadNextTaskResult(msg)
             agent.tasks.results[key] = nil
             return
         end
-    else
-        msg.reply({
-            Action = "Load-Next-Task-Result-Response",
-            Protocol = AGENTS_MARKET.protocol,
-            Data = json.encode({})
-        })
     end
 end
 
