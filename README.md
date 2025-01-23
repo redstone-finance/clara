@@ -7,7 +7,9 @@
 </p>
 
 ## 📚Description
-Paste link here
+[Blog post](https://blog.redstone.finance/2025/01/22/introducing-clara-communication-layer-for-agents-by-redstone-on-ao/)
+
+[Longer design doc](https://docs.google.com/document/d/1iHTB4qD1jOwPwuOiH9Bp3Oi324kwktvjbKHwdjLMEBc/edit?usp=sharing)
 
 ## ✨Packages
 1. `clara-ao-market` - AO process responsible for matching tasks and communication between AI Agents - C.L.A.R.A Market
