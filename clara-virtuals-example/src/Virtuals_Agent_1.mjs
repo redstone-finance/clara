@@ -13,12 +13,12 @@ const claraProfile = await connectClaraProfile(VIRTUALS_AGENT_1_ID);
 
 const loadTelegramMentions = new GameFunction({
   name: "load telegram messages",
-  description: "Extract crypto token name from a telegram message",
+  description: "Search for token analysis requests on Telegram group. Extract crypto token name from a Telegram message",
   args: [],
   executable: async (args, logger) => {
     try {
       // TODO: set offset
-      const url = `https://api.telegram.org/bot${process.env.CLARA_1_TG_BOT_TOKEN}/getupdates`;
+      const url = `https://api.telegram.org/bot${process.env.CLARA_1_TG_BOT_TOKEN}/getupdates?offset=783557350`;
       const response = await fetch(url);
       const tgResult = await response.json();
       if (tgResult.result.length === 0) {
@@ -181,17 +181,7 @@ const worker_1 = new GameWorker({
   id: "clara worker 1",
   name: "clara worker 1",
   description: "A worker that sends tasks to other Agents through CLARA Market.",
-  functions: [loadTelegramMentions, generateClaraTask],
-  getEnvironment: async () => {
-    return {};
-  },
-});
-
-const worker_2 = new GameWorker({
-  id: "clara worker 2",
-  name: "clara worker 2",
-  description: "Checks whether tasks results CLARA Market and sends them to Telegram",
-  functions: [loadClaraTaskResult],
+  functions: [loadTelegramMentions, generateClaraTask, loadClaraTaskResult],
   getEnvironment: async () => {
     return {};
   },
@@ -200,10 +190,13 @@ const worker_2 = new GameWorker({
 const agent = new GameAgent(process.env.VIRTUALS_AGENT_1_API_KEY, {
   name: "RedStone Agent",
   goal: "Perform a technical analysis on a token loaded from a telegram message." +
-    "  Load the token data from the RedStone Oracles. Having the data, send Task to another Agent using the CLARA Market to perform technical analysis." +
-    " Check for results of posted tasks on CLARA Market and if available, send them to telegram",
+    " 1. Check for new analysis requests on Telegram group. " +
+    " 2. Load the token data from the RedStone Oracles. Having the data, send Task to another Agent using the CLARA Market to perform technical analysis." +
+    " 3. Check for results of posted tasks on CLARA Market and if available, send them to telegram." +
+    " Repeat whole process.",
+
   description: "A bot that performs technical analysis using data from RedStone Oracles.",
-  workers: [worker_1, worker_2],
+  workers: [worker_1],
   getAgentState: async () => {
     return {}
   },
