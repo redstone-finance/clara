@@ -1,0 +1,29 @@
+{
+  "name": "clara-agent",
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "model:pull": "ollama pull llama3.2",
+
+    "model:create:market": "node models/create_clara_market_model.mjs",
+    "model:create:twitter": "node models/create_clara_twitter_model.mjs",
+
+    "model:remove:market": "ollama rm CLARA_MARKET_MODEL",
+    "model:remove:tweeter": "ollama rm CLARA_TWEETER_MODEL",
+
+    "agent:run:market": "node agents/Clara_Market_Agent.mjs",
+    "agent:run:twitter": "node agents/Clara_Twitter_Agent.mjs"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@ai-sdk/openai": "^1.1.3",
+    "ai": "^4.1.6",
+    "dotenv": "^16.4.7",
+    "ollama": "^0.5.12",
+    "redstone-clara-sdk": "^0.0.14",
+    "zod": "^3.24.1"
+  }
+}
