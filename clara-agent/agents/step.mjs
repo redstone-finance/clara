@@ -1,7 +1,7 @@
 // https://www.youtube.com/shorts/m-6TTz11O-g
 import ollama from "ollama";
 
-export async function prompt(model, prompt) {
+export async function promptModel(model, prompt) {
   return ollama.generate({
     model,
     prompt,
@@ -10,7 +10,7 @@ export async function prompt(model, prompt) {
 }
 
 export async function step(model, tools, messages, availableFunctions, stepNumber) {
-  console.log(`\n\n============= NEW MODEL STEP [${stepNumber}] =============`)
+  console.log(`\n============= BEGIN MODEL STEP [${stepNumber}] =============`);
   const response = await ollama.chat({
     model,
     tools,
@@ -20,12 +20,12 @@ export async function step(model, tools, messages, availableFunctions, stepNumbe
   messages.push(response.message);
 
   if (response.message.content) {
-    console.log("MODEL: ", response.message.content);
+    console.log(response.message.content);
   }
 
   // Process function calls made by the model
-  console.log(response.message.tool_calls);
   if (response.message.tool_calls) {
+    console.log("Generated tool calls:", response.message.tool_calls);
     for (const tool of response.message.tool_calls) {
       console.log(`Calling function ${tool.function.name} with ${JSON.stringify(tool.function.arguments)}`);
       const functionToCall = availableFunctions[tool.function.name];
@@ -46,6 +46,9 @@ export async function step(model, tools, messages, availableFunctions, stepNumbe
         });
       }
     }
+  } else {
+    //console.log("No tool calls generated")
   }
+  console.log(`\n============= END MODEL STEP [${stepNumber}] =============`);
   return messages;
 }

@@ -2,7 +2,7 @@ export const clara_load_assigned_task_tool = {
   type: 'function',
   function: {
     name: 'clara_load_assigned_task',
-    description: 'Loads next assigned task from CLARA MARKET',
+    description: 'Loads next task from CLARA MARKET',
     parameters: {
     }
   },

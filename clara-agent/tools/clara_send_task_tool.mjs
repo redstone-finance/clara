@@ -8,7 +8,7 @@ export const clara_send_task_tool = {
         required: ['topic', 'reward', 'content'],
         properties: {
           topic: { type: 'string', description: 'The task topic' },
-          reward: { type: 'number', description: 'The reward for a task' },
+          reward: { type: 'string', description: 'The reward for a task' },
           content: { type: 'string', description: 'The content for a task' }
         }
       }
@@ -16,7 +16,7 @@ export const clara_send_task_tool = {
   }
 
 export async function claraSendTask(claraProfile, args) {
-  console.log(JSON.stringify(args, null, 2));
+  //console.log(JSON.stringify(args, null, 2));
 
   const result =  await claraProfile.registerTask({
     topic: args.topic,
@@ -27,5 +27,5 @@ export async function claraSendTask(claraProfile, args) {
     }
   });
 
-  return JSON.stringify(result);
+  return `${JSON.stringify(result)}`;
 }

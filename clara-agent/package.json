@@ -9,9 +9,6 @@
     "model:create:market": "node models/create_clara_market_model.mjs",
     "model:create:twitter": "node models/create_clara_twitter_model.mjs",
 
-    "model:remove:market": "ollama rm CLARA_MARKET_MODEL",
-    "model:remove:tweeter": "ollama rm CLARA_TWEETER_MODEL",
-
     "agent:run:market": "node agents/Clara_Market_Agent.mjs",
     "agent:run:twitter": "node agents/Clara_Twitter_Agent.mjs"
   },

@@ -23,5 +23,5 @@ export async function claraSendTaskResult(claraProfile, args) {
     result: args.result,
   });
 
-  return JSON.stringify(result);
+  return JSON.stringify(result.Data);
 }

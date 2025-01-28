@@ -28,5 +28,7 @@ export async function claraLoadTaskResult(claraProfile, args) {
     result: result.result, // not enough result
   }
 
+  console.dir(logObject, {depth: null});
+
   return JSON.stringify(logObject);
 }
