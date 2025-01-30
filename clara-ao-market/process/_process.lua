@@ -9,6 +9,10 @@ AGENTS_MARKET._version = AGENTS_MARKET._version or version
 AGENTS_MARKET.Storage = AGENTS_MARKET.Storage or {
     Agents = {},
     TasksQueue = {}, -- queueueueueueueueueue
+    Totals = {
+        rewards = "0",
+        done = 0
+    },
     balances = {},
 }
 
@@ -63,7 +67,8 @@ function AGENTS_MARKET.v1.RegisterAgentProfile(msg)
             inbox = {}, -- tasks to be processed by this Agent
             results = {}, -- results of the the tasks requested by this Agent
             declined = {}   --  array of IDs of the tasks declined by this Agent
-        }
+        },
+        totals = _initTotals()
     })
 
     _dispatchTasks()
@@ -93,6 +98,12 @@ function AGENTS_MARKET.v1.RegisterTask(msg)
     _assertProtocol(protocol)
     _assertTopic(topic)
     _assertStrategy(matchingStrategy)
+
+    local requestingAgent = utils.find(function(x)
+        return x.id == agentId and x.profileAddress == senderAddr
+    end)(AGENTS_MARKET.Storage.Agents)
+    _maybeInitTotals(requestingAgent)
+    requestingAgent.totals.requested = requestingAgent.totals.requested + 1;
 
     local function __createTask()
         local task = {
@@ -156,6 +167,13 @@ function AGENTS_MARKET.v1.SendResult(msg)
     }
 
     agent.tasks.inbox[taskId] = nil
+    _maybeInitTotals(agent)
+    agent.totals.done = agent.totals.done + 1
+    agent.totals.rewards = tostring(bint.new(agent.totals.rewards) + bint.new(originalTask.reward))
+    _maybeInitGlobalTotals()
+    AGENTS_MARKET.Storage.Totals.done = AGENTS_MARKET.Storage.Totals.done + 1
+    AGENTS_MARKET.Storage.Totals.rewards = tostring(bint.new(AGENTS_MARKET.Storage.Totals.rewards) + bint.new(originalTask.reward))
+
     if (requestingAgent.tasks.results == nil) then
         requestingAgent.tasks.results = {}
     end
@@ -242,7 +260,7 @@ function AGENTS_MARKET.v1.DispatchTasks(msg)
     msg.reply({
         Action = "Tasks-Dispatched",
         Protocol = AGENTS_MARKET.protocol,
-        Data = json.encode(AGENTS_MARKET.Storage.TasksQueue)
+        Data = AGENTS_MARKET.Storage.TasksQueue
     })
 end
 
@@ -250,7 +268,7 @@ function AGENTS_MARKET.v1.ListAgents(msg)
     msg.reply({
         Action = "List-Agents",
         Protocol = AGENTS_MARKET.protocol,
-        Data = json.encode(AGENTS_MARKET.Storage.Agents)
+        Data = AGENTS_MARKET.Storage.Agents
     })
 end
 
@@ -258,7 +276,7 @@ function AGENTS_MARKET.v1.TasksQueue(msg)
     msg.reply({
         Action = "Tasks-Queue",
         Protocol = AGENTS_MARKET.protocol,
-        Data = json.encode(AGENTS_MARKET.Storage.TasksQueue)
+        Data = AGENTS_MARKET.Storage.TasksQueue
     })
 end
 
@@ -380,6 +398,18 @@ function AGENTS_MARKET.v1.Balances(msg)
     })
 end
 
+function AGENTS_MARKET.v1.DashboardData(msg)
+    msg.reply({
+        Action = "Tasks-Queue",
+        Protocol = AGENTS_MARKET.protocol,
+        Data = {
+            queue = AGENTS_MARKET.Storage.TasksQueue,
+            agents = AGENTS_MARKET.Storage.Agents,
+            totals = AGENTS_MARKET.Storage.Totals
+        }
+    })
+end
+
 -- ======= HANDLERS REGISTRATION
 Handlers.add(
         "AGENTS_MARKET.v1.RegisterAgentProfile",
@@ -432,6 +462,11 @@ Handlers.add(
         "AGENTS_MARKET.v1.LoadNextTaskResult",
         Handlers.utils.hasMatchingTagOf("Action", { "Load-Next-Task-Result", "v1.Load-Next-Task-Result" }),
         AGENTS_MARKET.v1.LoadNextTaskResult
+)
+Handlers.add(
+        "AGENTS_MARKET.v1.DashboardData",
+        Handlers.utils.hasMatchingTagOf("Action", { "Dashboard-Data", "v1.Dashboard-Data" }),
+        AGENTS_MARKET.v1.DashboardData
 )
 
 Handlers.add(
@@ -530,6 +565,8 @@ function _storeAndSendTask(chosenAgent, task)
     }
 
     chosenAgent.tasks.inbox[uniqueKey] = taskCopy
+    _maybeInitTotals(chosenAgent)
+    chosenAgent.totals.assigned = chosenAgent.totals.assigned + 1;
 
     Send({
         Target = chosenAgent.profileAddress,
@@ -680,10 +717,33 @@ function _cheapestStrategy(topic, taskId, reward, requesterId)
     end
 end
 
+function _maybeInitTotals(agent)
+    if (agent.totals == nil) then
+        agent.totals = _initTotals()
+    end
+end
+
+function _maybeInitGlobalTotals()
+    if (AGENTS_MARKET.Storage.Totals == nil) then
+        AGENTS_MARKET.Storage.Totals = {
+            rewards = "0",
+            done = 0
+        }
+    end
+end
+
+function _initTotals()
+    return {
+        requested = 0,
+        assigned = 0,
+        done = 0,
+        rewards = "0"
+    }
+end
+
 AGENTS_MARKET.matchingStrategies = {
     broadcast = _broadcastStrategy,
     leastOccupied = _leastOccupiedStrategy, -- choose next agent that supports required "topic" and is least occupied
     cheapest = _cheapestStrategy, -- choose agent that supports required "topic" for the lowest fee
     query = nil -- query agents first with the tasks details and choose the cheapest from the responses (TODO)
 }
-
