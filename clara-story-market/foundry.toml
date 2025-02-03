@@ -1,0 +1,12 @@
+[profile.default]
+out = 'out'
+libs = ['node_modules', 'lib']
+cache_path  = 'forge-cache'
+gas_reports = ["*"]
+optimizer = true
+optimizer_runs = 20000
+via_ir = true
+test = 'test'
+solc = '0.8.26'
+fs_permissions = [{ access = 'read', path = './' }, { access = 'read-write', path = './deploy-out' }]
+evm_version = 'cancun'
