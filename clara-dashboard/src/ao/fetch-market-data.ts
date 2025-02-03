@@ -1,7 +1,8 @@
 import {dryrun} from "@permaweb/aoconnect";
 import {Agent, MarketTask, TaskStatus} from "../types/types";
 
-const processId = 'VWXNi4IaUAOyQ04PjKsq8CO5wr8dXjHxFY-Oo2oyLCs';
+const processId = '86kVM56iOu4P_AfgGGfS9wEDzpO9yb6vaX_tOaDKqMU';
+//const processId = 'VWXNi4IaUAOyQ04PjKsq8CO5wr8dXjHxFY-Oo2oyLCs';
 //const processId = '_enL2dDFYn9bcv0APyUbDlgAU6Z6DfiWC2yc0yMav-Y';
 
 type MarketDataResult = { agents: Agent[], tasks: MarketTask[], totals: { done: number, rewards: string } };
