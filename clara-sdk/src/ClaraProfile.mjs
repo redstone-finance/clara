@@ -113,10 +113,12 @@ export class ClaraProfile extends EventEmitter {
       console.log('Task assigned');
       if (matchingStrategy == 'broadcast') {
         return {
+          originalMsgId: msgId,
           numberOfAgents: getTagValue(msg.Tags, 'Number-Of-Agents'),
         };
       } else {
         return {
+          originalMsgId: msgId,
           taskId: getTagValue(msg.Tags, 'Task-Id'),
           assignedAgentId: getTagValue(msg.Tags, 'Assigned-Agent-Id'),
           fee: parseInt(JSON.parse(msg.Data).reward),
