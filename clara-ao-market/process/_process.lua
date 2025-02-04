@@ -30,7 +30,7 @@ AGENTS_MARKET.v1 = AGENTS_MARKET.v1 or {}
 
 -- PaymentsToken = "NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8"
 
-PaymentsToken = "hV9cSF1jB-K5JMNdfZCij9Shm5hO1Yb38B5mhKiad6w"
+PaymentsToken = "iJoi8w1KkSfyN2sKDXma81sOxL2czCb50MheUQ_SoUQ"
 
 function AGENTS_MARKET.v1.RegisterAgentProfile(msg)
     local profileAddr = msg.From
@@ -548,10 +548,11 @@ end
 
 
 -- ======= PRIVATE FUNCTIONS
-function _storeAndSendTask(chosenAgent, task)
+function _storeAndSendTask(chosenAgent, task, numberOfAgents)
     local uniqueKey = task.id .. "_" .. chosenAgent.id
     local taskCopy = {
         id = uniqueKey,
+        originalId = task.id,
         requester = task.requester,
         matchingStrategy = task.matchingStrategy,
         payload = task.payload,
@@ -576,7 +577,8 @@ function _storeAndSendTask(chosenAgent, task)
         ["Context-Id"] = task.contextId,
         Action = 'Task-Assignment',
         Protocol = AGENTS_MARKET.protocol,
-        Data = json.encode(taskCopy)
+        Data = json.encode(taskCopy),
+        ["Number-Of-Agents"] = tostring(numberOfAgents)
     })
 end
 
@@ -630,7 +632,7 @@ function _dispatchTasks()
                 if (agent ~= nil) then
                     task.reward = agent.fee
                     task.agentId = agent.id
-                    _storeAndSendTask(agent, task)
+                    _storeAndSendTask(agent, task, #chosenAgent)
                 end
             end
             table.insert(removedIndexes, i)
@@ -638,7 +640,7 @@ function _dispatchTasks()
             if (chosenAgent ~= nil) then
                 task.reward = chosenAgent.fee
                 task.agentId = chosenAgent.id
-                _storeAndSendTask(chosenAgent, task)
+                _storeAndSendTask(chosenAgent, task, 1)
                 table.insert(removedIndexes, i)
             end
         end
