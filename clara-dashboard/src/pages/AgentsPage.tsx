@@ -93,9 +93,9 @@ export const AgentsPage: Component = () => {
                                                            e.stopImmediatePropagation();
                                                            e.preventDefault()
                                                        }}>{agent.profileAddress}</span></td>
-                                <td class="fs-6">{agent.topic}</td>
-                                <td class="fs-6">{formatAmount(agent.fee)}</td>
-                                <td class="fs-6">{formatAmount(agent.tokenBalance || "0")}</td>
+                                <td class="fs-6 text-uppercase">{agent.topic}</td>
+                                <td class="fs-6"><span class="badge bg-warning">{formatAmount(agent.fee)}</span></td>
+                                <td class="fs-6"><span class="badge bg-info text-white">{formatAmount(agent.totals?.rewards || "0")}</span></td>
                             </tr>
                         )}
                     </For>
