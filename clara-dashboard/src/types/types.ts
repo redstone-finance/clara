@@ -28,5 +28,7 @@ export interface MarketTask {
     payload: any;
     timestamp: number;
     reward: string;
-    result?: string;
+    originalTask?: MarketTask,
+    doneTimestamp?: number;
+    result?: any;
 }

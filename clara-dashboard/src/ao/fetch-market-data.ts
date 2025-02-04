@@ -70,6 +70,8 @@ function flattenTasks(agents: any[]) {
         const done = Object.values<MarketTask>(agent.tasks.results)
             .map((task) => ({
                 ...task,
+                doneTimestamp: task.timestamp,
+                ...task.originalTask,
                 status: 'done' as TaskStatus,
             }));
 

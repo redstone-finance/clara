@@ -1,10 +1,11 @@
 import {Component, createMemo, createResource, Show} from "solid-js";
-import {useParams} from "@solidjs/router";
+import {useNavigate, useParams} from "@solidjs/router";
 import {cachedMarketData} from "../ao/fetch-market-data";
 import {Preloader} from "../components/Preloader";
 import {formatAmount} from "../utils/formatters";
 
 export const TaskDetailsPage: Component = () => {
+    const navigate = useNavigate();
     const [marketData] = createResource(cachedMarketData);
     const params = useParams();
 
@@ -12,9 +13,13 @@ export const TaskDetailsPage: Component = () => {
         return t.id === params.id
     }));
 
+    const handleAgentClick = (agentId: string) => {
+        navigate(`/agents/${agentId}`);
+    };
+
     return (
         <div class="container">
-            <h1 class="display-5">Task Details</h1>
+            <h1 class="display-6">Task Details</h1>
             <Show when={marketData.loading}>
                 <Preloader/>
             </Show>
@@ -26,32 +31,49 @@ export const TaskDetailsPage: Component = () => {
             <Show when={marketData()} keyed>
                 <Show when={task()} fallback={<div>Task not found</div>}>
                     <div class="mb-3">
-                        <strong>Task ID:</strong> {task()?.id}
+                        <strong>Task ID:</strong> <span class="badge bg-light font-monospace">{task()?.id}</span>
                     </div>
                     <div class="mb-3">
-                        <strong>Requesting Agent ID:</strong> {task()?.requesterId}
+                        <strong>Requesting Agent ID:</strong> <a
+                        href={`/agents/${task()?.requesterId}`}>{task()?.requesterId}</a>
                     </div>
                     <div class="mb-3">
-                        <strong>Reward:</strong> {formatAmount(task()?.reward)}
+                        <strong>Created at:</strong>
+                        <span class="badge bg-light font-monospace">
+                            {(new Date(task()?.timestamp)).toISOString()}
+                        </span>
                     </div>
                     <div class="mb-3">
-                        <strong>Matching Strategy:</strong> {task()?.matchingStrategy}
+                        <strong>Reward:</strong> <span
+                        class="badge bg-light font-monospace">{formatAmount(task()?.reward)}</span>
                     </div>
                     <div class="mb-3">
-                        <strong>Topic:</strong> {task()?.topic}
+                        <strong>Matching Strategy:</strong> <span
+                        class="badge bg-light font-monospace">{task()?.matchingStrategy}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Topic:</strong> <span class="badge bg-light font-monospace">{task()?.topic}</span>
                     </div>
                     <div class="mb-3">
                         <strong>Payload:</strong>
-                        <pre>{JSON.stringify(task()?.payload)}</pre>
+                        <pre style="max-width: 600px; white-space: pre-wrap; ">{JSON.stringify(task()?.payload)}</pre>
                     </div>
                     <div class="mb-3">
-                        <strong>Status:</strong> {task()?.status}
+                        <strong>Status:</strong> <span class="badge bg-light font-monospace">{task()?.status}</span>
                     </div>
-                    {task()?.result && (
+
+                    <Show when={task()?.status === "done"}>
                         <div class="mb-3">
-                            <strong>Result:</strong> {task()?.result}
+                            <strong>Done at:</strong>
+                            <span class="badge bg-light font-monospace">
+                                {(new Date(task()?.doneTimestamp)).toISOString()}
+                            </span>
                         </div>
-                    )}
+                        <div class="mb-3">
+                            <strong>Result:</strong>
+                            <pre style="max-width: 600px; white-space: pre-wrap; ">{JSON.stringify(task()?.result)}</pre>
+                        </div>
+                    </Show>
                 </Show>
             </Show>
         </div>

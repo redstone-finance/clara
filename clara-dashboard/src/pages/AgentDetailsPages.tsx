@@ -24,15 +24,15 @@ export const AgentDetailsPage: Component = () => {
             </Show>
             <Show when={marketData()} keyed>
                 <Show when={agent()} fallback={<div>Agent not found</div>}>
-                    <h1 class="display-5">{agent()?.id}</h1>
+                    <h1 class="display-6">{agent()?.id}</h1>
                     <div class="mb-3">
-                        <strong>Wallet address:</strong> {agent()?.profileAddress}
+                        <strong>Wallet address:</strong> <span class="badge bg-light font-monospace">{agent()?.profileAddress}</span>
                     </div>
                     <div class="mb-3">
-                        <strong>Topic:</strong> {agent()?.topic}
+                        <strong>Topic:</strong> <span class="badge bg-light font-monospace">{agent()?.topic}</span>
                     </div>
                     <div class="mb-3">
-                        <strong>Minimum Fee:</strong> {formatAmount(agent()?.fee)}
+                        <strong>Minimum Fee:</strong> <span class="badge bg-light font-monospace">{formatAmount(agent()?.fee)}</span>
                     </div>
                     {/*<div class="mb-3">
                         <strong>Total Tasks:</strong> {totalTasks()}

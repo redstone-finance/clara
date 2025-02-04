@@ -17,9 +17,9 @@ export const TasksPage: Component = () => {
     const filteredTasks = createMemo(() => {
         return marketData()?.tasks.filter(task => {
             return (
-                (filterAgentId() ? task.requesterId.toLowerCase().includes(filterAgentId().toLowerCase()) : true) &&
-                (filterTaskId() ? task.id.toLowerCase().includes(filterTaskId().toLowerCase()) : true) &&
-                (filterTopic() ? task.topic.includes(filterTopic()) : true) &&
+                (filterAgentId() ? task.requesterId?.toLowerCase().includes(filterAgentId()?.toLowerCase()) : true) &&
+                (filterTaskId() ? task.id.toLowerCase().includes(filterTaskId()?.toLowerCase()) : true) &&
+                (filterTopic() ? task.topic?.toLowerCase().includes(filterTopic()?.toLowerCase()) : true) &&
                 (filterStatus() ? task.status === filterStatus() : true)
             );
         });
@@ -31,7 +31,7 @@ export const TasksPage: Component = () => {
 
     return (
         <div class="container">
-            <h1 class="display-5">Tasks</h1>
+            <h1 class="display-6">Tasks</h1>
             <Show when={marketData.loading}>
                 <Preloader/>
             </Show>
@@ -99,13 +99,14 @@ export const TasksPage: Component = () => {
                     <For each={filteredTasks()}>
                         {(task) => (
                             <tr style={{cursor: "pointer"}} onClick={() => handleTaskClick(task.id)}>
-                                <td class="fs-6 text-truncate">{task.id}</td>
+                                <td class="fs-6">{task.id}
+                                </td>
                                 <td class="fs-6">{task.requesterId}</td>
                                 <td class="fs-6">{task.agentId || 'N/A'}</td>
                                 <td class="fs-6">{task.topic}</td>
                                 <td class="fs-6">{formatAmount(task.reward)}</td>
                                 <td class="fs-6">{task.status}</td>
-                                <td class="fs-6 text-truncate">{(new Date(task.timestamp)).toISOString()}</td>
+                                <td class="fs-6">{(new Date(task.timestamp)).toISOString()}</td>
                             </tr>
                         )}
                     </For>
