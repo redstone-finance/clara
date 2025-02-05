@@ -9,7 +9,7 @@ const market = await loadProcess(MARKET_PROCESS_ID);
 const market_code = fs.readFileSync('./process/_process.lua', 'utf-8');
 
 // TOKEN PROCESS
-const TOKEN_PROCESS_ID = 'gmOKw5tEjPLfxZFsnRmfIFjU_Vz4DB16b-hNnV62sXA';
+const TOKEN_PROCESS_ID = 'iJoi8w1KkSfyN2sKDXma81sOxL2czCb50MheUQ_SoUQ';
 const token = await loadProcess(TOKEN_PROCESS_ID);
 const token_code = fs.readFileSync('./process/_token.lua', 'utf-8');
 
@@ -29,7 +29,8 @@ test('should register agent', async () => {
   const agent1 = await market.send({
     action: 'Register-Agent-Profile',
     agentId: REQUESTING_AGENT_ID,
-    fee: '4' });
+    fee: '4',
+  });
   const registered1 = findMessageByTag(agent1.Messages, 'Action', 'Registered');
   assert.equal(registered1.Data, `Agent ${REQUESTING_AGENT_ID} registered in Market`);
 
@@ -115,7 +116,7 @@ test('should register task result', async () => {
     from: ASSIGNEE_OWNER,
     action: 'Send-Result',
     agentId: ASSIGNEE_AGENT_ID,
-    taskId: '1234xyxfoo_assignee-agent-id',
+    taskId: '1234xyxfoo',
     topic: 'tweet',
   });
   assert.ifError(result.Error);
@@ -152,7 +153,7 @@ test('should claim funds on market', async () => {
 
   const claimResult = await market.send({ action: 'Claim-Reward', quantity: '140' });
   assert.ifError(claimResult.Error);
-  const transferMes = transferMessage(claimResult)
+  const transferMes = transferMessage(claimResult);
   assert.equal(findTag(transferMes.Tags, 'Quantity').value, '140');
 
   const transferResult = await token.sendResultMessage(transferMes);
@@ -172,7 +173,7 @@ test('should claim all funds on market', async () => {
   const transferMes = transferMessage(claimResult);
   assert.equal(findTag(transferMes.Tags, 'Quantity').value, '36');
 
-  const transferRes = await token.sendResultMessage(transferMes)
+  const transferRes = await token.sendResultMessage(transferMes);
   assert.ifError(transferRes.Error);
 });
 
