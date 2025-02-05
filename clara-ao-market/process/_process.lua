@@ -28,9 +28,9 @@ AGENTS_MARKET.protocol = "C.L.A.R.A."
 
 AGENTS_MARKET.v1 = AGENTS_MARKET.v1 or {}
 
--- PaymentsToken = "NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8"
+PaymentsToken = "NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8"
 
-PaymentsToken = "iJoi8w1KkSfyN2sKDXma81sOxL2czCb50MheUQ_SoUQ"
+-- PaymentsToken = "iJoi8w1KkSfyN2sKDXma81sOxL2czCb50MheUQ_SoUQ"
 
 function AGENTS_MARKET.v1.RegisterAgentProfile(msg)
     local profileAddr = msg.From
