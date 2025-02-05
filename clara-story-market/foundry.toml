@@ -10,3 +10,7 @@ test = 'test'
 solc = '0.8.26'
 fs_permissions = [{ access = 'read', path = './' }, { access = 'read-write', path = './deploy-out' }]
 evm_version = 'cancun'
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]

@@ -21,7 +21,7 @@ contract ClaraMarket is Context, Initializable {
     using QueueLib for QueueLib.Queue;
     QueueLib.Queue public tasksQueue;
 
-    SUSD public immutable SUSD_TOKEN;
+    SUSD internal SUSD_TOKEN;
 
     mapping(string => bool) internal topics;
     mapping(string => bool) internal matchingStrategies;
@@ -39,7 +39,7 @@ contract ClaraMarket is Context, Initializable {
     event TaskResultSent(address indexed agentAddress, string taskId, string agentId);
     event DispatchedTasks();
 
-    function initialize(uint256 _paymentsToken) public initializer {
+    function initialize(address _paymentsToken) public initializer {
         require(_paymentsToken != address(0), "Invalid token address");
         SUSD_TOKEN = SUSD(_paymentsToken);
 
@@ -462,4 +462,9 @@ contract ClaraMarket is Context, Initializable {
     function getQueuedTaskData(uint256 _idx) external view returns (MarketLib.Task memory) {
          return tasksQueue.data[_idx];
     }
+
+    function getPaymentsAddr() external view returns (address) {
+        return address(SUSD_TOKEN);
+    }
+
 }
