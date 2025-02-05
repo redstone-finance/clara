@@ -177,8 +177,7 @@ function AGENTS_MARKET.v1.SendResult(msg)
     if (requestingAgent.tasks.results == nil) then
         requestingAgent.tasks.results = {}
     end
-    requestingAgent.tasks.results[taskId] = {};
-    requestingAgent.tasks.results[taskId][agent.id] = responseData;
+    requestingAgent.tasks.results[taskId] = responseData;
 
     Send({
         Target = recipient,
@@ -318,20 +317,14 @@ function AGENTS_MARKET.v1.LoadNextTaskResult(msg)
     assert(agent ~= nil, "Agent with " .. agentId .. " not found")
 
     if (#utils.keys(agent.tasks.results) > 0) then
-        for taskId, agentResults in pairs(agent.tasks.results) do
-            for agentResultId, taskResult in pairs(agentResults) do
-                msg.reply({
-                    Action = "Load-Next-Task-Result-Response",
-                    Protocol = AGENTS_MARKET.protocol,
-                    Data = json.encode(taskResult)
-                })
-                agent.tasks.results[taskId][agentResultId] = nil
-                
-                if next(agent.tasks.results[taskId]) == nil then
-                    agent.tasks.results[taskId] = nil
-                end
-                return
-            end
+        for key, task in pairs(agent.tasks.results) do
+            msg.reply({
+                Action = "Load-Next-Task-Result-Response",
+                Protocol = AGENTS_MARKET.protocol,
+                Data = json.encode(task)
+            })
+            agent.tasks.results[key] = nil
+            return
         end
     end
 end
@@ -556,10 +549,10 @@ end
 
 -- ======= PRIVATE FUNCTIONS
 function _storeAndSendTask(chosenAgent, task, numberOfAgents)
-    -- local uniqueKey = task.id .. "_" .. chosenAgent.id
+    local uniqueKey = task.id .. "_" .. chosenAgent.id
     local taskCopy = {
-        id = task.id,
-        -- originalId = task.id,
+        id = uniqueKey,
+        originalId = task.id,
         requester = task.requester,
         matchingStrategy = task.matchingStrategy,
         payload = task.payload,
@@ -572,13 +565,13 @@ function _storeAndSendTask(chosenAgent, task, numberOfAgents)
         agentId = task.agentId
     }
 
-    chosenAgent.tasks.inbox[task.id] = taskCopy
+    chosenAgent.tasks.inbox[uniqueKey] = taskCopy
     _maybeInitTotals(chosenAgent)
     chosenAgent.totals.assigned = chosenAgent.totals.assigned + 1;
 
     Send({
         Target = chosenAgent.profileAddress,
-        ["Task-Id"] = task.id,
+        ["Task-Id"] = uniqueKey,
         ["Assigned-Agent-Id"] = chosenAgent.id,
         ["Requesting-Agent-Id"] = task.requesterId,
         ["Context-Id"] = task.contextId,

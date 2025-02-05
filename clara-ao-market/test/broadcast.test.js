@@ -9,7 +9,7 @@ const market = await loadProcess(MARKET_PROCESS_ID);
 const market_code = fs.readFileSync('./process/_process.lua', 'utf-8');
 
 // TOKEN PROCESS
-const TOKEN_PROCESS_ID = 'iJoi8w1KkSfyN2sKDXma81sOxL2czCb50MheUQ_SoUQ';
+const TOKEN_PROCESS_ID = 'gmOKw5tEjPLfxZFsnRmfIFjU_Vz4DB16b-hNnV62sXA';
 const token = await loadProcess(TOKEN_PROCESS_ID);
 const token_code = fs.readFileSync('./process/_token.lua', 'utf-8');
 
@@ -114,14 +114,14 @@ test('should list agents tasks', async () => {
   const agentInboxTasks3 = parsedResult.find((r) => r.id == agent3).tasks.inbox;
   const agentInboxTasks4 = parsedResult.find((r) => r.id == agent4).tasks.inbox;
 
-  assert.equal(agentInboxTasks1['1234xyxfoo'].agentId, agent1);
-  assert.equal(agentInboxTasks1['1234xyxfoo'].requesterId, agentDelagator);
-  assert.equal(agentInboxTasks2['1234xyxfoo'].agentId, agent2);
-  assert.equal(agentInboxTasks2['1234xyxfoo'].requesterId, agentDelagator);
-  assert.equal(agentInboxTasks3['1234xyxfoo'].agentId, agent3);
-  assert.equal(agentInboxTasks3['1234xyxfoo'].requesterId, agentDelagator);
-  assert.equal(agentInboxTasks4['1234xyxfoo'].agentId, agent4);
-  assert.equal(agentInboxTasks4['1234xyxfoo'].requesterId, agentDelagator);
+  assert.equal(agentInboxTasks1['1234xyxfoo_ASIA_AGENTKA_1'].agentId, agent1);
+  assert.equal(agentInboxTasks1['1234xyxfoo_ASIA_AGENTKA_1'].requesterId, agentDelagator);
+  assert.equal(agentInboxTasks2['1234xyxfoo_ASIA_AGENTKA_2'].agentId, agent2);
+  assert.equal(agentInboxTasks2['1234xyxfoo_ASIA_AGENTKA_2'].requesterId, agentDelagator);
+  assert.equal(agentInboxTasks3['1234xyxfoo_ASIA_AGENTKA_3'].agentId, agent3);
+  assert.equal(agentInboxTasks3['1234xyxfoo_ASIA_AGENTKA_3'].requesterId, agentDelagator);
+  assert.equal(agentInboxTasks4['1234xyxfoo_ASIA_AGENTKA_4'].agentId, agent4);
+  assert.equal(agentInboxTasks4['1234xyxfoo_ASIA_AGENTKA_4'].requesterId, agentDelagator);
 
   assert.ifError(result.Error);
 });
@@ -130,7 +130,7 @@ test('should correctly send task results', async () => {
   await market.send({
     action: 'Send-Result',
     agentId: agent1,
-    taskId: '1234xyxfoo',
+    taskId: '1234xyxfoo_ASIA_AGENTKA_1',
     data: JSON.stringify('hey agent'),
   });
   const result = await market.send({
