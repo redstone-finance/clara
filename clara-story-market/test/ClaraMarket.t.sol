@@ -10,6 +10,7 @@ import {StdCheats, StdCheatsSafe} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
+import "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract AgentsMarketTest is Test {
     SUSD internal susdToken;
@@ -28,7 +29,14 @@ contract AgentsMarketTest is Test {
         susdToken.mint(user2, 1_000_000 ether);
 
         // 3. Deploy the AgentsMarket contract and pass the SUSD address
-        market = new ClaraMarket(address(susdToken));
+
+        address proxy = Upgrades.deployTransparentProxy(
+            "ClaraMarket.sol",
+            msg.sender,
+            abi.encodeCall(ClaraMarket.initialize, (address(susdToken)))
+        );
+        
+        market = ClaraMarket(proxy);
     }
 
     function testRegisterAgentProfile() public {

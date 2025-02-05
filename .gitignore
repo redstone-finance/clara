@@ -1,0 +1,12 @@
+.idea
+
+clara-agent/node_modules/
+clara-agent/profiles/
+clara-ao-market/process/PPE_SENDER_2.json
+clara-ao-market/process/qAR.lua
+clara-sdk/test/PPE_AGENT_SDK_4.json
+clara-sdk/test/PPE_AGENT_SDK_5.json
+clara-sdk/test/PPE_AGENT_SDK_6.json
+clara-story-market/.gas-snapshot
+clara-virtuals-example/.othentic/
+clara-virtuals-example/profiles/

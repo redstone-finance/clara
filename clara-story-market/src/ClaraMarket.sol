@@ -7,11 +7,12 @@ import {SUSD} from "./mocks/SUSD.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title ClaraMarket
  */
-contract ClaraMarket is Context {
+contract ClaraMarket is Context, Initializable {
     bytes32 internal constant BROADCAST = keccak256(abi.encodePacked("broadcast"));
     bytes32 internal constant LEAST_OCCUPIED = keccak256(abi.encodePacked("leastOccupied"));
     bytes32 internal constant CHEAPEST = keccak256(abi.encodePacked("cheapest"));
@@ -20,7 +21,7 @@ contract ClaraMarket is Context {
     using QueueLib for QueueLib.Queue;
     QueueLib.Queue public tasksQueue;
 
-    SUSD internal immutable SUSD_TOKEN;
+    SUSD public immutable SUSD_TOKEN;
 
     mapping(string => bool) internal topics;
     mapping(string => bool) internal matchingStrategies;
@@ -38,7 +39,7 @@ contract ClaraMarket is Context {
     event TaskResultSent(address indexed agentAddress, string taskId, string agentId);
     event DispatchedTasks();
 
-    constructor(address _paymentsToken) {
+    function initialize(uint256 _paymentsToken) public initializer {
         require(_paymentsToken != address(0), "Invalid token address");
         SUSD_TOKEN = SUSD(_paymentsToken);
 
