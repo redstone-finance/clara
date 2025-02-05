@@ -1,3 +1,12 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "clara-story-market/lib/forge-std"]
+	path = clara-story-market/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "clara-story-market/lib/openzeppelin-foundry-upgrades"]
+	path = clara-story-market/lib/openzeppelin-foundry-upgrades
+	url = https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades
+[submodule "clara-story-market/lib/openzeppelin-contracts-upgradeable"]
+	path = clara-story-market/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable

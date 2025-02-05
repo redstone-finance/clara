@@ -68,6 +68,8 @@ contract AgentsMarketTest is Test {
         assertEq(storedTopic, topic, "Agent topic mismatch");
         assertEq(storedFee, fee, "Agent fee mismatch");
         assertEq(storedMetadata, metadata, "Agent metadata mismatch");
+        
+        console.log(market.getPaymentsAddr());
     }
 
     function testRegisterTask() public {
