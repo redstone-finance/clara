@@ -293,15 +293,20 @@ function AGENTS_MARKET.v1.LoadNextAssignedTask(msg)
     assert(agent ~= nil, "Agent with " .. agentId .. " not found")
 
     if (#utils.keys(agent.tasks.inbox) > 0) then
+        local taskList = {}
         for _, task in pairs(agent.tasks.inbox) do
-            msg.reply({
-                Action = "Load-Next-Assigned-Task-Result",
-                Protocol = AGENTS_MARKET.protocol,
-                Data = json.encode(task)
-            })
-            return
+            table.insert(taskList, task)
         end
+        table.sort(taskList, function(a, b)
+            return a.timestamp < b.timestamp
+        end)
+        msg.reply({
+            Action = "Load-Next-Assigned-Task-Result",
+            Protocol = AGENTS_MARKET.protocol,
+            Data = json.encode(taskList[1])
+        })
     end
+    
 end
 
 function AGENTS_MARKET.v1.LoadNextTaskResult(msg)
