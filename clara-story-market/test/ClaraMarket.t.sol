@@ -10,7 +10,6 @@ import {StdCheats, StdCheatsSafe} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
-import "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract AgentsMarketTest is Test {
     SUSD internal susdToken;
@@ -29,71 +28,75 @@ contract AgentsMarketTest is Test {
         susdToken.mint(user2, 1_000_000 ether);
 
         // 3. Deploy the AgentsMarket contract and pass the SUSD address
-
-        address proxy = Upgrades.deployTransparentProxy(
-            "ClaraMarket.sol",
-            msg.sender,
-            abi.encodeCall(ClaraMarket.initialize, (address(susdToken)))
-        );
-        
-        market = ClaraMarket(proxy);
+        market = new ClaraMarket(address(susdToken));
     }
 
     function testRegisterAgentProfile() public {
         vm.startPrank(user1);
 
-        string memory agentId = "Agent001";
         string memory topic = "chat";
         uint256 fee = 50;
         string memory metadata = "some metadata";
 
-        vm.expectEmit(true, true, false, true);
-        emit RegisteredAgent(user1, agentId);
+        vm.expectEmit(true, false, false, true);
+        emit RegisteredAgent(user1, MarketLib.AgentInfo({
+            exists: true,
+            id: user1,
+            fee: fee,
+            topic: topic,
+            metadata: metadata
+        }));
 
-        market.registerAgentProfile(agentId, topic, fee, metadata);
+        market.registerAgentProfile(fee, topic, metadata);
         vm.stopPrank();
 
         (
             bool exists,
-            string memory storedId,
-            address profileAddress,
-            string memory storedTopic,
+            address id,
             uint256 storedFee,
+            string memory storedTopic,
             string memory storedMetadata
-        ) = market.agents(agentId);
+        ) = market.agents(user1);
 
         assertTrue(exists, "Agent should exist after registration");
-        assertEq(storedId, agentId, "Agent ID mismatch");
-        assertEq(profileAddress, user1, "Agent address mismatch");
+        assertEq(id, user1, "Agent address mismatch");
         assertEq(storedTopic, topic, "Agent topic mismatch");
         assertEq(storedFee, fee, "Agent fee mismatch");
         assertEq(storedMetadata, metadata, "Agent metadata mismatch");
-        
-        console.log(market.getPaymentsAddr());
     }
 
     function testRegisterTask() public {
         vm.startPrank(user1);
-        market.registerAgentProfile("Agent001", "chat", 50, "some metadata");
+        market.registerAgentProfile(50, "chat", "some metadata");
         vm.stopPrank();
 
         vm.startPrank(user2);
-        market.registerAgentProfile("Agent002", "chat", 10, "another agent");
+        market.registerAgentProfile(10, "chat", "another agent");
         vm.stopPrank();
 
         vm.startPrank(user2);
         susdToken.approve(address(market), 500 ether);
 
-        vm.expectEmit(true, true, false, true);
-        emit RegisteredTask(user2, "TASK-0x0000000000000000000000000000000000002222-1", "Agent002", 100 ether);
+        vm.expectEmit(true, true, true, false);
+        emit TaskAssigned(user2,user1,  1, MarketLib.Task({
+            id: 1,
+            contextId: 1,
+            timestamp: 1,
+            blockNumber: 1,
+            reward: 100 ether,
+            requester: user2,
+            agentId: user1,
+            matchingStrategy: "broadcast",
+            payload: "task payload",
+            topic: "chat"
+        }));
 
         uint256 reward = 100 ether;
         market.registerTask(
-            "Agent002",
-            "chat",
             reward,
+            0,
+            "chat",
             "broadcast",
-            "someContextId",
             "task payload"
         );
 
@@ -106,14 +109,13 @@ contract AgentsMarketTest is Test {
         vm.stopPrank();
     }
 
-
     function testSendResult() public {
         vm.startPrank(user1);
-        market.registerAgentProfile("AgentA", "chat", 100 ether, "metadataA");
+        market.registerAgentProfile(100 ether, "chat", "metadataA");
         vm.stopPrank();
 
         vm.startPrank(user2);
-        market.registerAgentProfile("AgentB", "chat", 20, "metadataB");
+        market.registerAgentProfile(20, "chat", "metadataB");
         vm.stopPrank();
 
         uint256 rewardAmount = 100 ether;
@@ -122,24 +124,29 @@ contract AgentsMarketTest is Test {
         susdToken.approve(address(market), rewardAmount);
 
         market.registerTask(
-            "AgentB",
-            "chat",
             rewardAmount,
+            0,
+            "chat",
             "broadcast",
-            "",
             "someTaskPayload"
         );
+
         vm.stopPrank();
 
         vm.startPrank(user1);
-        string memory assignedTaskId = "TASK-0x0000000000000000000000000000000000002222-1";
+        uint256 assignedTaskId = 1;
 
         string memory resultJSON = "{\"status\":\"done\"}";
 
-        vm.expectEmit(true, false, false, true);
-        emit TaskResultSent(user2, "TASK-0x0000000000000000000000000000000000002222-1_AgentA", "AgentA");
+        vm.expectEmit(true, true, true, true);
+        emit TaskResultSent(user2, user1, assignedTaskId, MarketLib.TaskResult({
+            id: assignedTaskId,
+            timestamp: 1,
+            blockNumber: 1,
+            result: resultJSON
+        }));
 
-        market.sendResult("AgentA", "TASK-0x0000000000000000000000000000000000002222-1_AgentA", resultJSON);
+        market.sendResult(assignedTaskId, resultJSON);
         vm.stopPrank();
 
         uint256 finalUser1Bal = susdToken.balanceOf(user1);
@@ -149,7 +156,7 @@ contract AgentsMarketTest is Test {
             uint256 assigned,
             uint256 done,
             uint256 rewards
-        ) = market.agentTotals("AgentA");
+        ) = market.agentTotals(user1);
         assertEq(requested, 0, "AgentA never requested tasks");
         assertEq(assigned, 1, "AgentA should have 1 assigned task");
         assertEq(done, 1, "AgentA should have done 1 task");
@@ -161,7 +168,7 @@ contract AgentsMarketTest is Test {
     }
 
 
-    event RegisteredAgent(address indexed agentAddress, string agentId);
-    event RegisteredTask(address indexed agentAddress, string taskId, string agentId, uint256 reward);
-    event TaskResultSent(address indexed agentAddress, string taskId, string agentId);
+    event RegisteredAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
+    event TaskAssigned(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.Task task);
+    event TaskResultSent(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.TaskResult taskResult);
 }

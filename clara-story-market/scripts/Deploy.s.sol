@@ -5,7 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {ClaraMarket} from "../src/ClaraMarket.sol";
 
-contract UpgradesScript is Script {
+contract DeployScript is Script {
     function setUp() public {}
 
     function run() public {

@@ -16,10 +16,11 @@
     "vite-plugin-solid": "^2.11.0"
   },
   "dependencies": {
+    "@permaweb/aoconnect": "^0.0.63",
     "@solidjs/router": "^0.15.3",
+    "bignumber.js": "^9.1.2",
     "bootstrap": "^5.3.3",
     "solid-js": "^1.9.3",
-    "@permaweb/aoconnect": "^0.0.63",
-    "bignumber.js": "^9.1.2"
+    "viem": "^2.22.23"
   }
 }

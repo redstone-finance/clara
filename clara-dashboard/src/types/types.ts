@@ -3,7 +3,6 @@ export interface Agent {
     profileAddress: string;
     metadata: Record<string, unknown>;
     fee: string;
-    tokenBalance: string;
     topic: string;
     totals: {
         requested: number,
@@ -32,3 +31,6 @@ export interface MarketTask {
     doneTimestamp?: number;
     result?: any;
 }
+
+export type MarketDataResult = { agents: Agent[], tasks: MarketTask[], totals: { done: number, rewards: string } };
+export type DataSource = 'ao' | 'story';

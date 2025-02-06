@@ -1,12 +1,16 @@
 import {Component, createMemo, createResource, Show} from "solid-js";
 import {useNavigate, useParams} from "@solidjs/router";
-import {cachedMarketData} from "../ao/fetch-market-data";
 import {Preloader} from "../components/Preloader";
 import {formatAmount} from "../utils/formatters";
+import {useDataSource} from "../DataSourceContext";
+import {cachedMarketData} from "../data/fetch-market-data";
+import {MarketDataResult} from "../types/types";
 
 export const TaskDetailsPage: Component = () => {
     const navigate = useNavigate();
-    const [marketData] = createResource(cachedMarketData);
+    const { dataSource } = useDataSource();
+    const [marketData] = createResource<MarketDataResult>(dataSource, cachedMarketData);
+
     const params = useParams();
 
     const task = createMemo(() => marketData()?.tasks.find(t => {
@@ -45,7 +49,7 @@ export const TaskDetailsPage: Component = () => {
                     </div>
                     <div class="mb-3">
                         <strong>Reward:</strong> <span
-                        class="badge bg-light font-monospace">{formatAmount(task()?.reward)}</span>
+                        class="badge bg-light font-monospace">{formatAmount(dataSource(), task()?.reward)}</span>
                     </div>
                     <div class="mb-3">
                         <strong>Matching Strategy:</strong> <span

@@ -1,13 +1,15 @@
 import {Component, createMemo, createResource, createSignal, For, Show} from "solid-js";
 import {useNavigate} from "@solidjs/router";
-import {TaskStatus} from "../types/types";
-import {cachedMarketData} from "../ao/fetch-market-data";
+import {MarketDataResult, TaskStatus} from "../types/types";
 import {Preloader} from "../components/Preloader";
 import {formatAmount} from "../utils/formatters";
+import {useDataSource} from "../DataSourceContext";
+import {cachedMarketData} from "../data/fetch-market-data";
 
 export const TasksPage: Component = () => {
     const navigate = useNavigate();
-    const [marketData] = createResource(cachedMarketData);
+    const { dataSource } = useDataSource();
+    const [marketData] = createResource<MarketDataResult>(dataSource, cachedMarketData);
 
     const [filterAgentId, setFilterAgentId] = createSignal("");
     const [filterTaskId, setFilterTaskId] = createSignal("");
@@ -101,10 +103,11 @@ export const TasksPage: Component = () => {
                             <tr style={{cursor: "pointer"}} onClick={() => handleTaskClick(task.id)}>
                                 <td class="fs-6">{task.id}
                                 </td>
-                                <td class="fs-6">{task.requesterId}</td>
-                                <td class="fs-6">{task.agentId || 'N/A'}</td>
+                                <td class="fs-6"><span class="badge bg-light font-monospace">{task.requesterId}</span></td>
+                                <td class="fs-6"><span class="badge bg-light font-monospace">{task.agentId || 'N/A'}</span>
+                                </td>
                                 <td class="fs-6">{task.topic}</td>
-                                <td class="fs-6">{formatAmount(task.reward)}</td>
+                                <td class="fs-6">{formatAmount(dataSource(), task.reward)}</td>
                                 <td class="fs-6">{task.status}</td>
                                 <td class="fs-6">{(new Date(task.timestamp)).toISOString()}</td>
                             </tr>
