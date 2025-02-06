@@ -2,44 +2,42 @@
 pragma solidity ^0.8.26;
 
 import {MarketLib} from "./MarketLib.sol";
-import {QueueLib} from "./QueueLib.sol";
 import {SUSD} from "./mocks/SUSD.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title ClaraMarket
  */
-contract ClaraMarket is Context, Initializable {
+contract ClaraMarket is Context {
+    // constants
     bytes32 internal constant BROADCAST = keccak256(abi.encodePacked("broadcast"));
     bytes32 internal constant LEAST_OCCUPIED = keccak256(abi.encodePacked("leastOccupied"));
     bytes32 internal constant CHEAPEST = keccak256(abi.encodePacked("cheapest"));
     bytes32 internal constant CHAT_TOPIC = keccak256(abi.encodePacked("chat"));
 
-    using QueueLib for QueueLib.Queue;
-    QueueLib.Queue public tasksQueue;
+    // public
+    MarketLib.MarketTotals public marketTotals;
+    mapping(address => MarketLib.AgentInfo) public agents;
+    address[] public allAgents;
+    uint256 public agentsLength;
+    mapping(address => MarketLib.AgentTotals) public agentTotals;
+    mapping(address => mapping(uint256 => MarketLib.Task)) public agentInbox;
 
+    // internal
     SUSD internal SUSD_TOKEN;
-
     mapping(string => bool) internal topics;
     mapping(string => bool) internal matchingStrategies;
-    MarketLib.MarketTotals public marketTotals;
-    mapping(string => MarketLib.AgentInfo) public agents;
-    string[] public allAgentIds;
-    uint256 public agentsLength;
-    mapping(string => MarketLib.AgentTotals) public agentTotals;
-    mapping(string => mapping(string => MarketLib.Task)) public agentInbox;
-    mapping(string => mapping(string => MarketLib.TaskResult)) public agentResults;
 
-    event RegisteredAgent(address indexed agentAddress, string agentId);
-    event RegisteredTask(address indexed agentAddress, string taskId, string agentId, uint256 reward);
-    event TaskAssigned(address indexed agentAddress, string taskId, string agentId);
-    event TaskResultSent(address indexed agentAddress, string taskId, string agentId);
-    event DispatchedTasks();
+    // private
+    uint256 private tasksCounter;
 
-    function initialize(address _paymentsToken) public initializer {
+    // events
+    event RegisteredAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
+    event TaskAssigned(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.Task task);
+    event TaskResultSent(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.TaskResult taskResult);
+
+    constructor(address _paymentsToken) {
         require(_paymentsToken != address(0), "Invalid token address");
         SUSD_TOKEN = SUSD(_paymentsToken);
 
@@ -52,6 +50,8 @@ contract ClaraMarket is Context, Initializable {
         matchingStrategies["broadcast"] = true;
         matchingStrategies["leastOccupied"] = true;
         matchingStrategies["cheapest"] = true;
+
+        tasksCounter = 0;
     }
 
     function _assertTopic(string memory _topic) internal view {
@@ -62,244 +62,169 @@ contract ClaraMarket is Context, Initializable {
         require(matchingStrategies[_matchingStrategy], "Unknown matching strategy");
     }
 
-    function _assertAgentRegistered(string memory _agentId, address sender) internal view {
-        require(agents[_agentId].exists, "Agent not registered");
-        require(agents[_agentId].profileAddress == sender, "Sender not matching agent's address");
-    }
-
-    function _assertIsPositive(uint256 num, string memory name) internal pure {
-        require(num > 0, string(abi.encodePacked(name, " must be positive")));
+    function _assertAgentRegistered() internal view {
+        require(agents[_msgSender()].exists, "Agent not registered");
     }
 
     function registerAgentProfile(
-        string calldata _agentId,
-        string calldata _topic,
         uint256 _fee,
+        string calldata _topic,
         string calldata _metadata
     )
     external
     {
         _assertTopic(_topic);
-        _assertIsPositive(_fee, "Agent fee");
+        require(_fee > 0, "Fee must be positive");
+        require(agents[_msgSender()].exists == false, "Agent already registered");
 
-        if (agents[_agentId].exists) {
-            require(
-                agents[_agentId].profileAddress == _msgSender(),
-                "Existing agent belongs to different address"
-            );
-        }
-
-        _registerAgentId(_agentId);
-        agents[_agentId] = MarketLib.AgentInfo({
+        _registerAgent();
+        agents[_msgSender()] = MarketLib.AgentInfo({
             exists: true,
-            id: _agentId,
-            profileAddress: _msgSender(),
+            id: _msgSender(),
             topic: _topic,
             fee: _fee,
             metadata: _metadata
         });
-        emit RegisteredAgent(_msgSender(), _agentId);
-
-        _dispatchTasksInternal();
+        emit RegisteredAgent(_msgSender(), agents[_msgSender()]);
     }
 
     function registerTask(
-        string calldata _agentId,
-        string calldata _topic,
         uint256 _reward,
+        uint256 _contextId,
+        string calldata _topic,
         string calldata _matchingStrategy,
-        string calldata _contextId,
         string calldata _payload
     )
     external
     {
-        _assertAgentRegistered(_agentId, _msgSender());
-        _assertIsPositive(_reward, "Task reward");
+        _assertAgentRegistered();
+        require(_reward > 0, "Reward must be positive");
         _assertTopic(_topic);
         _assertMatchingStrategy(_matchingStrategy);
 
-        agentTotals[_agentId].requested += 1;
+        agentTotals[_msgSender()].requested += 1;
 
-        string memory newTaskId = _generateTaskId();
+        uint256 newTaskId = ++tasksCounter;
 
-        // Create the Task
         MarketLib.Task memory newTask = MarketLib.Task({
             id: newTaskId,
-            requester: _msgSender(),
-            matchingStrategy: _matchingStrategy,
-            payload: _payload,
+            contextId: _contextId == 0 ? newTaskId : _contextId,
             timestamp: block.timestamp,
             blockNumber: block.number,
-            topic: _topic,
             reward: _reward,
-            requesterId: _agentId,
-            contextId: bytes(_contextId).length > 0 ? _contextId : newTaskId,
-            agentId: "" // not assigned yet
+            requester: _msgSender(),
+            agentId: address(0),
+            matchingStrategy: _matchingStrategy,
+            payload: _payload,
+            topic: _topic
         });
 
-        tasksQueue.push(newTask);
         // locking SUSD on Market contract - allowance required!
         SUSD_TOKEN.transferFrom(_msgSender(), address(this), _reward);
-
-        emit RegisteredTask(_msgSender(), newTaskId, _agentId, _reward);
-
-        _dispatchTasksInternal();
+        _dispatchTasksInternal(newTask);
     }
 
     function sendResult(
-        string calldata _agentId,
-        string calldata _taskId,
+        uint256 _taskId,
         string calldata _resultJSON
     )
     external
     {
-        _assertAgentRegistered(_agentId, _msgSender());
+        _assertAgentRegistered();
 
-        MarketLib.Task memory originalTask = agentInbox[_agentId][_taskId];
+        MarketLib.Task memory originalTask = agentInbox[_msgSender()][_taskId];
         require(
-            bytes(originalTask.id).length != 0,
+            originalTask.id != 0,
             "Task not found in agent inbox or already completed"
         );
 
-        delete agentInbox[_agentId][_taskId];
+        delete agentInbox[_msgSender()][_taskId];
 
-        agentTotals[_agentId].done += 1;
-        agentTotals[_agentId].rewards += originalTask.reward;
+        agentTotals[_msgSender()].done += 1;
+        agentTotals[_msgSender()].rewards += originalTask.reward;
 
         marketTotals.done += 1;
         marketTotals.rewards += originalTask.reward;
 
         MarketLib.TaskResult memory taskResult = MarketLib.TaskResult({
-            taskId: originalTask.id,
-            agentId: _agentId,
-            agentAddress: _msgSender(),
-            result: _resultJSON,
+            id: originalTask.id,
             timestamp: block.timestamp,
             blockNumber: block.number,
-            originalTask: originalTask
+            result: _resultJSON
         });
 
-        agentResults[originalTask.requesterId][originalTask.id] = taskResult;
-
+        // agentResults[originalTask.requester][originalTask.id] = taskResult;
         // Transfer tokens from contract balance to the agent
         _transferTokens(_msgSender(), originalTask.reward);
 
-        emit TaskResultSent(originalTask.requester, originalTask.id, _agentId);
-
-        if (keccak256(abi.encodePacked(originalTask.topic)) == CHAT_TOPIC) {
-            _handleChatReply(_agentId, originalTask, _resultJSON);
-        }
+        emit TaskResultSent(originalTask.requester, _msgSender(), originalTask.id, taskResult);
     }
 
-    function dispatchTasks()
-    external
-    {
-        _dispatchTasksInternal();
-        emit DispatchedTasks();
-    }
+    function _dispatchTasksInternal(MarketLib.Task memory _task) internal {
+        bytes32 strategy = keccak256(abi.encodePacked(_task.matchingStrategy));
 
-    function _dispatchTasksInternal() internal {
-        console.log("Dispatch tasks internal");
-        uint256 tasksQueueLength = tasksQueue.length();
-        if (tasksQueueLength == 0) {
-            return;
-        }
-
-        console.log(tasksQueueLength);
-        for (uint256 idx = 0; idx < tasksQueueLength; idx++) {
-            if (tasksQueue.isEmpty()) {
-                // this should not happen, but better safe than sorry...
-                return;
-            }
-            MarketLib.Task memory task = tasksQueue.pop();
-
-            bytes32 strategy = keccak256(abi.encodePacked(task.matchingStrategy));
-
-            if (strategy == BROADCAST) {
-                // broadcast strategy => assign to all matching agents
-                console.log("broadcast");
-                string[] memory matchedAgents = _matchBroadcast(
-                    task.topic,
-                    task.id,
-                    task.reward,
-                    task.requesterId
-                );
-                console.log(matchedAgents.length);
-
-                if (matchedAgents.length > 0) {
-                    for (uint256 k = 0; k < matchedAgents.length; k++) {
-                        string memory agentId = matchedAgents[k];
-                        uint256 agentFee = agents[agentId].fee;
-                        _storeAndSendTask(agentId, task, agentFee);
-                    }
-                }
-
-            } else if (strategy == LEAST_OCCUPIED) {
-                string memory chosen = _matchLeastOccupied(task.topic, task.id, task.reward, task.requesterId);
-                if (bytes(chosen).length > 0) {
-                    uint256 agentFee = agents[chosen].fee;
-                    _storeAndSendTask(chosen, task, agentFee);
-                }
-
-            } else if (strategy == CHEAPEST) {
-                string memory cheapest = _matchCheapest(task.topic, task.id, task.reward, task.requesterId);
-                if (bytes(cheapest).length > 0) {
-                    uint256 agentFee = agents[cheapest].fee;
-                    _storeAndSendTask(cheapest, task, agentFee);
+        if (strategy == BROADCAST) {
+            // broadcast strategy => assign to all matching agents
+            console.log("broadcast");
+            address[] memory matchedAgents = _matchBroadcast(
+                _task.reward,
+                _task.requester,
+                _task.topic
+            );
+            console.log(matchedAgents.length);
+            require(matchedAgents.length > 0, "Could not match any agents for broadcast mode");
+            uint256 rewardLeft = _task.reward;
+            for (uint256 k = 0; k < matchedAgents.length; k++) {
+                address agentId = matchedAgents[k];
+                uint256 agentFee = agents[agentId].fee;
+                if (rewardLeft >= agentFee) {
+                    _storeAndSendTask(agentId, _task, agentFee);
+                    rewardLeft -= agentFee;
+                } else {
+                    return;
                 }
             }
+        } else if (strategy == LEAST_OCCUPIED) {
+            address chosen = _matchLeastOccupied(_task.reward, _task.requester, _task.topic);
+            require(chosen != address(0), "Could not match agent for least occupied mode");
+            uint256 agentFee = agents[chosen].fee;
+            _storeAndSendTask(chosen, _task, agentFee);
+
+        } else if (strategy == CHEAPEST) {
+            address cheapest = _matchCheapest(_task.reward, _task.requester, _task.topic);
+            require(cheapest != address(0), "Could not match agent for cheapest mode");
+            uint256 agentFee = agents[cheapest].fee;
+            _storeAndSendTask(cheapest, _task, agentFee);
         }
     }
 
     function _storeAndSendTask(
-        string memory _agentId,
+        address _agentId,
         MarketLib.Task memory originalTask,
         uint256 agentFee
     ) internal {
-        console.log("Task assigned", _agentId);
-        string memory uniqueKey = string(
-            abi.encodePacked(originalTask.id, "_", _agentId)
-        );
-
-        console.log("Unique key", uniqueKey);
-
-        // The assigned agent's version of the task
-        MarketLib.Task memory assignedTask = MarketLib.Task({
-            id: uniqueKey,
-            requester: originalTask.requester,
-            matchingStrategy: originalTask.matchingStrategy,
-            payload: originalTask.payload,
-            timestamp: originalTask.timestamp,
-            blockNumber: originalTask.blockNumber,
-            topic: originalTask.topic,
-            reward: agentFee,
-            requesterId: originalTask.requesterId,
-            contextId: originalTask.contextId,
-            agentId: _agentId
-        });
-
-        agentInbox[_agentId][uniqueKey] = assignedTask;
+        originalTask.reward = agentFee;
+        originalTask.agentId = _agentId;
+        agentInbox[_agentId][originalTask.id] = originalTask;
         agentTotals[_agentId].assigned += 1;
 
-        emit TaskAssigned(agents[_agentId].profileAddress, uniqueKey, _agentId);
+        emit TaskAssigned(originalTask.requester, _agentId, originalTask.id, originalTask);
     }
 
     function _filterAgentsWithTopicAndFee(
-        string memory _topic,
-        string memory _taskId,
         uint256 _reward,
-        string memory _requesterId
-    ) internal view returns (string[] memory) {
-        string[] memory temp = new string[](allAgentIds.length);
+        address _requesterId,
+        string memory _topic
+    ) internal view returns (address[] memory) {
+        address[] memory temp = new address[](allAgents.length);
         uint256 count = 0;
-        console.log("All agents length", allAgentIds.length);
-        
-        bytes32 topic = keccak256(abi.encodePacked(_topic));
-        bytes32 requesterId = keccak256(abi.encodePacked(_requesterId));
+        console.log("All agents length", allAgents.length);
 
-        for (uint256 i = 0; i < allAgentIds.length; i++) {
+        bytes32 topic = keccak256(abi.encodePacked(_topic));
+
+        for (uint256 i = 0; i < allAgents.length; i++) {
             console.log("checking agent");
-            string memory id_ = allAgentIds[i];
+            address id_ = allAgents[i];
             MarketLib.AgentInfo memory agentInfo = agents[id_];
 
             if (!agentInfo.exists) {
@@ -317,14 +242,14 @@ contract ClaraMarket is Context, Initializable {
             }
 
             // cannot assign to self
-            if (requesterId == keccak256(abi.encodePacked(id_))) {
+            if (_requesterId == id_) {
                 continue;
             }
 
             temp[count++] = id_;
         }
 
-        string[] memory filtered = new string[](count);
+        address[] memory filtered = new address[](count);
         for (uint256 j = 0; j < count; j++) {
             filtered[j] = temp[j];
         }
@@ -332,27 +257,25 @@ contract ClaraMarket is Context, Initializable {
     }
 
     function _matchBroadcast(
-        string memory _topic,
-        string memory _taskId,
         uint256 _reward,
-        string memory _requesterId
-    ) internal view returns (string[] memory) {
-        return _filterAgentsWithTopicAndFee(_topic, _taskId, _reward, _requesterId);
+        address _requesterId,
+        string memory _topic
+    ) internal view returns (address[] memory) {
+        return _filterAgentsWithTopicAndFee(_reward, _requesterId, _topic);
     }
 
     function _matchLeastOccupied(
-        string memory _topic,
-        string memory _taskId,
         uint256 _reward,
-        string memory _requesterId
-    ) internal view returns (string memory) {
-        string[] memory candidates = _filterAgentsWithTopicAndFee(_topic, _taskId, _reward, _requesterId);
+        address _requesterId,
+        string memory _topic
+    ) internal view returns (address) {
+        address[] memory candidates = _filterAgentsWithTopicAndFee(_reward, _requesterId, _topic);
         if (candidates.length == 0) {
-            return "";
+            return address(0);
         }
 
         uint256 minCount = type(uint256).max;
-        string memory chosen = "";
+        address chosen = address(0);
 
         for (uint256 i = 0; i < candidates.length; i++) {
             uint256 inboxCount = _agentInboxCount(candidates[i]);
@@ -365,18 +288,17 @@ contract ClaraMarket is Context, Initializable {
     }
 
     function _matchCheapest(
-        string memory _topic,
-        string memory _taskId,
         uint256 _reward,
-        string memory _requesterId
-    ) internal view returns (string memory) {
-        string[] memory candidates = _filterAgentsWithTopicAndFee(_topic, _taskId, _reward, _requesterId);
+        address _requesterId,
+        string memory _topic
+    ) internal view returns (address) {
+        address[] memory candidates = _filterAgentsWithTopicAndFee(_reward, _requesterId, _topic);
         if (candidates.length == 0) {
-            return "";
+            return address(0);
         }
 
         uint256 minFee = type(uint256).max;
-        string memory chosen = "";
+        address chosen = address(0);
 
         for (uint256 i = 0; i < candidates.length; i++) {
             uint256 fee_ = agents[candidates[i]].fee;
@@ -395,72 +317,20 @@ contract ClaraMarket is Context, Initializable {
         require(ok, "Token transfer failed");
     }
 
-    function _agentInboxCount(string memory _agentId) private view returns (uint256) {
+    function _agentInboxCount(address _agentId) private view returns (uint256) {
         MarketLib.AgentTotals memory tot = agentTotals[_agentId];
         // approximate:
         uint256 currentlyInInbox = tot.assigned - tot.done;
         return currentlyInInbox;
     }
 
-    function _handleChatReply(
-        string memory _agentId,
-        MarketLib.Task memory originalTask,
-        string memory _resultJSON
-    ) private {
-        string memory requesterId = originalTask.requesterId;
-        uint256 fee = agents[requesterId].fee;
-        if (fee == 0) {
-            return;
-        }
-
-        string memory newTaskId = _generateTaskId();
-
-        MarketLib.Task memory chatTask = MarketLib.Task({
-            id: newTaskId,
-            requester: _msgSender(),
-            matchingStrategy: originalTask.matchingStrategy,
-            payload: _resultJSON,
-            timestamp: block.timestamp,
-            blockNumber: block.number,
-            topic: originalTask.topic,     // "chat"
-            reward: fee,
-            requesterId: _agentId,         // the one who is "replying"
-            contextId: originalTask.contextId,
-            agentId: requesterId           // assigned to the other side
-        });
-
-        string memory uniqueKey = string(abi.encodePacked(newTaskId, "_", requesterId));
-        agentInbox[requesterId][uniqueKey] = chatTask;
-
-        agentTotals[requesterId].assigned += 1;
-    }
-
-    /**
-     * TODO: too dumb
-     */
-    function _generateTaskId() private view returns (string memory) {
-        return string(
-            abi.encodePacked(
-                "TASK-",
-                Strings.toHexString(uint160(_msgSender()), 20),
-                "-",
-                Strings.toString(block.timestamp)
-            )
-        );
-    }
-
-    function _registerAgentId(string memory _agentId) internal {
+    function _registerAgent() internal {
         // Add only if new
-        if (!agents[_agentId].exists) {
-            agents[_agentId].exists = true;
-            console.log("Adding agent", _agentId);
-            allAgentIds.push(_agentId);
+        if (!agents[_msgSender()].exists) {
+            agents[_msgSender()].exists = true;
+            allAgents.push(_msgSender());
             agentsLength++;
         }
-    }
-
-    function getQueuedTaskData(uint256 _idx) external view returns (MarketLib.Task memory) {
-         return tasksQueue.data[_idx];
     }
 
     function getPaymentsAddr() external view returns (address) {

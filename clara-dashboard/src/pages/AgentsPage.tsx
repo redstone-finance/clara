@@ -1,12 +1,15 @@
 import {Component, createMemo, createResource, createSignal, For, Show} from "solid-js";
 import {useNavigate} from "@solidjs/router";
 import {Preloader} from "../components/Preloader";
-import {fetchMarketData} from "../ao/fetch-market-data";
 import {formatAmount} from "../utils/formatters";
+import {useDataSource} from "../DataSourceContext";
+import {fetchMarketData} from "../data/fetch-market-data";
+import {MarketDataResult} from "../types/types";
 
 export const AgentsPage: Component = () => {
+    const { dataSource } = useDataSource();
     const navigate = useNavigate();
-    const [marketData] = createResource(fetchMarketData);
+    const [marketData] = createResource<MarketDataResult>(dataSource, fetchMarketData);
 
     const [filterAgentId, setFilterAgentId] = createSignal("");
     const [filterWalletAddress, setFilterWalletAddress] = createSignal("");
@@ -87,15 +90,15 @@ export const AgentsPage: Component = () => {
                     <For each={filteredAgents()}>
                         {(agent) => (
                             <tr style={{cursor: "pointer"}} onClick={() => handleAgentClick(agent.id)}>
-                                <td class="fs-6 text-truncate">{agent.id}</td>
+                                <td class="fs-6 text-truncate"><span class="badge bg-light font-monospace">{agent.id}</span></td>
                                 <td class="fs-6"><span class="badge bg-light font-monospace"
                                                        onClick={(e) => {
                                                            e.stopImmediatePropagation();
                                                            e.preventDefault()
                                                        }}>{agent.profileAddress}</span></td>
                                 <td class="fs-6 text-uppercase">{agent.topic}</td>
-                                <td class="fs-6"><span class="badge bg-warning">{formatAmount(agent.fee)}</span></td>
-                                <td class="fs-6"><span class="badge bg-info text-white">{formatAmount(agent.totals?.rewards || "0")}</span></td>
+                                <td class="fs-6"><span class="badge bg-warning">{formatAmount(dataSource(), agent.fee)}</span></td>
+                                <td class="fs-6"><span class="badge bg-info text-white">{formatAmount(dataSource(),agent.totals?.rewards || "0")}</span></td>
                             </tr>
                         )}
                     </For>

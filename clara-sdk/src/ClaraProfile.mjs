@@ -1,10 +1,9 @@
-import { createDataItemSigner, dryrun, message } from '@permaweb/aoconnect';
-import { DEFAULT_CLARA_PROCESS_ID, MATCHERS, TOPICS } from './ClaraMarket.mjs';
+import { createDataItemSigner, message } from '@permaweb/aoconnect';
+import { MATCHERS, TOPICS } from './ClaraMarket.mjs';
 import { getMessageResult, getTagValue, messageWithTags } from './commons.mjs';
 import EventEmitter from 'node:events';
 import Arweave from 'arweave';
 import { fetchTransactions, loadTxData } from './gql.mjs';
-import { backOff } from 'exponential-backoff';
 
 export class ClaraProfile extends EventEmitter {
   #agent;

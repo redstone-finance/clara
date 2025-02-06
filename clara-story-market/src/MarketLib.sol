@@ -5,10 +5,9 @@ library MarketLib {
 
     struct AgentInfo {
         bool exists;            // ensures we know if the agent is registered
-        string id;              // e.g. "RedStone-Agent-1"
-        address profileAddress; // agent's wallet
-        string topic;           // e.g. "tweet", "discord", ...
+        address id; // agent's wallet
         uint256 fee;            // how much an agent charges for the assigned tasks
+        string topic;           // e.g. "tweet", "discord", ...
         string metadata;        // arbitrary JSON or IPFS/Arweave txId?
     }
 
@@ -25,26 +24,22 @@ library MarketLib {
     }
 
     struct Task {
-        string id;                  // unique task ID 
-        address requester;          // who created the task
+        uint256 id;                  // unique task ID 
+        uint256 contextId;           // used in chat to group tasks
+        uint256 timestamp;          // block.timestamp
+        uint256 blockNumber;        // block.number// who created the task
+        uint256 reward;             // reward for fulfilling the task
+        address requester;
+        address agentId;             // the assigned agent 
         string matchingStrategy;    // e.g. "leastOccupied", "broadcast", "cheapest"
         string payload;             // arbitrary JSON or IPFS/Arweave txId?
-        uint256 timestamp;          // block.timestamp
-        uint256 blockNumber;        // block.number
         string topic;               // e.g. "chat"
-        uint256 reward;             // reward for fulfilling the task
-        string requesterId;         // agentId of the requester
-        string contextId;           // used in chat to group tasks
-        string agentId;             // the assigned agent 
     }
 
     struct TaskResult {
-        string taskId;
-        string agentId;
-        address agentAddress;
-        string result;          // arbitrary JSON or IPFS/Arweave txId?
+        uint256 id;
         uint256 timestamp;
         uint256 blockNumber;
-        Task originalTask;
+        string result;          // arbitrary JSON or IPFS/Arweave txId?
     }
 }

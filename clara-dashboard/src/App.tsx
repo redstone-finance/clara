@@ -5,15 +5,16 @@ import {AgentsPage} from "./pages/AgentsPage";
 import {AgentDetailsPage} from "./pages/AgentDetailsPages";
 import {TasksPage} from "./pages/TasksPage";
 import {TaskDetailsPage} from "./pages/TaskDetailsPage";
+import {DataSourceProvider} from "./DataSourceContext";
 
 
 const Layout = (props: any) => {
     return (
-        <>
+        <DataSourceProvider>
             <Navbar/>
             <div class="container">{props.children}</div>
             <footer></footer>
-        </>
+        </DataSourceProvider>
     );
 };
 

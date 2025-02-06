@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import "./MarketLib.sol";
 
+// TODO: make an implementation where any element can be effectively removed
 library QueueLib {
     struct Queue {
         uint256 head;
