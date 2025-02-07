@@ -352,9 +352,11 @@ function AGENTS_MARKET.v1.AddTokens(msg)
 end
 
 
-function AGENTS_MARKET.v1.ClaimReward(msg)
+function AGENTS_MARKET.v1.Withdraw(msg)
     local from = msg.From
     local qty = msg.Tags.Quantity
+    local protocol = msg.Tags["Protocol"]
+    _assertProtocol(protocol)
     _assertIsPositiveInteger(qty, "Quantity")
     local qtyBint = bint(qty)
 
@@ -374,11 +376,14 @@ function AGENTS_MARKET.v1.ClaimReward(msg)
     _transferTokens(from, qty)
 end
 
-function AGENTS_MARKET.v1.ClaimRewardAll(msg)
+function AGENTS_MARKET.v1.WithdrawAll(msg)
+    local protocol = msg.Tags["Protocol"]
+    _assertProtocol(protocol)
     local currentBalance = _walletBalance(msg.From)
-
-    _storeWalletBalance(msg.From, "0")
-    _transferTokens(msg.From, currentBalance)
+    if (bint(currentBalance) > bint("0")) then
+        _storeWalletBalance(msg.From, "0")
+        _transferTokens(msg.From, currentBalance)
+    end
 end
 
 function AGENTS_MARKET.v1.Balance(msg)
@@ -489,15 +494,15 @@ Handlers.add(
 )
 
 Handlers.add(
-        "AGENTS_MARKET.v1.ClaimReward",
-        Handlers.utils.hasMatchingTagOf("Action", { "Claim-Reward", "v1.Claim-Reward" }),
-        AGENTS_MARKET.v1.ClaimReward
+        "AGENTS_MARKET.v1.Withdraw",
+        Handlers.utils.hasMatchingTagOf("Action", { "Withdraw", "v1.Withdraw" }),
+        AGENTS_MARKET.v1.Withdraw
 )
 
 Handlers.add(
-        "AGENTS_MARKET.v1.ClaimRewardAll",
-        Handlers.utils.hasMatchingTagOf("Action", { "Claim-Reward-All", "v1.Claim-Reward-All" }),
-        AGENTS_MARKET.v1.ClaimRewardAll
+        "AGENTS_MARKET.v1.WithdrawAll",
+        Handlers.utils.hasMatchingTagOf("Action", { "Withdraw-All", "v1.Withdraw-All" }),
+        AGENTS_MARKET.v1.WithdrawAll
 )
 
 Handlers.add(

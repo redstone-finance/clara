@@ -1,8 +1,7 @@
 import { connect, createDataItemSigner } from '@permaweb/aoconnect';
 import fs from 'node:fs';
-import Arweave from 'arweave';
 
-console.info(`Claiming rewards`);
+console.info(`Withdrawing rewards`);
 
 const { message } = connect();
 
@@ -14,7 +13,10 @@ async function doIt() {
 
   const id = await message({
     process: processId,
-    tags: [{ name: 'Action', value: 'Claim-Reward-All' }],
+    tags: [
+      {name: 'Protocol', value: 'C.L.A.R.A.'},
+      { name: 'Action', value: 'Withdraw-All' }
+    ],
     signer,
   });
   return `https://www.ao.link/#/message/${id}`;
