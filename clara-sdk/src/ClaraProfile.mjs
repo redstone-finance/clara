@@ -214,4 +214,33 @@ export class ClaraProfile extends EventEmitter {
       return null;
     }
   }
+
+  async withdraw(quantity = "all") {
+    const signer = createDataItemSigner(this.#agent.jwk);
+    const tags = [
+      {name: 'Protocol', value: 'C.L.A.R.A.'},
+    ];
+    if (quantity === "all") {
+      tags.push({ name: 'Action', value: 'Withdraw-All' });
+    } else {
+      tags.push(
+        { name: 'Action', value: 'Withdraw' },
+        { name: 'Quantity', value: '' + Math.floor(quantity) },
+      );
+    }
+
+    const id = await message({
+      process: this.#processId,
+      tags,
+      signer,
+    });
+
+    console.log(`Withdraw message: https://www.ao.link/#/message/${id}`);
+    const result = await getMessageResult(this.#processId, id);
+    if (result.Messages.length === 1) {
+      return JSON.parse(result.Messages[0].Data);
+    } else {
+      return null;
+    }
+  }
 }
