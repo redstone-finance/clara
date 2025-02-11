@@ -1,15 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {MarketLib} from "./MarketLib.sol";
-import {SUSD} from "./mocks/SUSD.sol";
+import "./mocks/AgentNFT.sol";
+import "./mocks/RevenueToken.sol";
+
+import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.sol";
+import { IRoyaltyWorkflows } from "@storyprotocol/periphery/interfaces/workflows/IRoyaltyWorkflows.sol";
+import { ILicensingModule } from "@storyprotocol/core/interfaces/modules/licensing/ILicensingModule.sol";
+import { PILFlavors } from "@storyprotocol/core/lib/PILFlavors.sol";
+import { PILTerms } from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
+import { IPILicenseTemplate } from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
+import { IRoyaltyModule } from "@storyprotocol/core/interfaces/modules/royalty/IRoyaltyModule.sol";
+import { RoyaltyPolicyLAP } from "@storyprotocol/core/modules/royalty/policies/LAP/RoyaltyPolicyLAP.sol";
+
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {MarketLib} from "./MarketLib.sol";
 import {console} from "forge-std/console.sol";
+import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 /**
  * @title ClaraMarket
  */
-contract ClaraMarket is Context {
+contract ClaraMarket is Context, ERC721Holder {
     // constants
     bytes32 internal constant BROADCAST = keccak256(abi.encodePacked("broadcast"));
     bytes32 internal constant LEAST_OCCUPIED = keccak256(abi.encodePacked("leastOccupied"));
@@ -24,23 +36,52 @@ contract ClaraMarket is Context {
     mapping(address => MarketLib.AgentTotals) public agentTotals;
     mapping(address => mapping(uint256 => MarketLib.Task)) public agentInbox;
 
+    IPAssetRegistry public immutable IP_ASSET_REGISTRY;
+    ILicensingModule public immutable LICENSING_MODULE;
+    IPILicenseTemplate public immutable PIL_TEMPLATE;
+    RoyaltyPolicyLAP public immutable ROYALTY_POLICY_LAP;
+    IRoyaltyWorkflows public immutable ROYALTY_WORKFLOWS;
+    IRoyaltyModule public immutable ROYALTY_MODULE;
+
+    RevenueToken public immutable REVENUE_TOKEN;
+    AgentNFT public immutable AGENT_NFT;
+    
     // internal
-    SUSD internal SUSD_TOKEN;
     mapping(string => bool) internal topics;
     mapping(string => bool) internal matchingStrategies;
 
     // private
-    uint256 private tasksCounter;
+    uint256 public tasksCounter;
 
     // events
     event RegisteredAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
     event TaskAssigned(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.Task task);
     event TaskResultSent(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.TaskResult taskResult);
 
-    constructor(address _paymentsToken) {
-        require(_paymentsToken != address(0), "Invalid token address");
-        SUSD_TOKEN = SUSD(_paymentsToken);
-
+    constructor(
+    // "IPAssetRegistry": "0x77319B4031e6eF1250907aa00018B8B1c67a244b",
+        address ipAssetRegistry,
+    // "LicensingModule": "0x04fbd8a2e56dd85CFD5500A4A4DfA955B9f1dE6f",
+        address licensingModule,
+    // "PILicenseTemplate": "0x2E896b0b2Fdb7457499B56AAaA4AE55BCB4Cd316",
+        address pilTemplate,
+    // "RoyaltyPolicyLAP": "0xBe54FB168b3c982b7AaE60dB6CF75Bd8447b390E",
+        address royaltyPolicyLAP,
+    // "RoyaltyWorkflows": "0x9515faE61E0c0447C6AC6dEe5628A2097aFE1890",
+        address royaltyWorkflows,
+    //  "RoyaltyModule": "0xD2f60c40fEbccf6311f8B47c4f2Ec6b040400086",
+        address royaltyModule,
+    // "WIP": "0x1514000000000000000000000000000000000000"
+        address payable _revenueToken) {
+        require(_revenueToken != address(0), "Invalid token address");
+        REVENUE_TOKEN = RevenueToken(_revenueToken);
+        IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+        LICENSING_MODULE = ILicensingModule(licensingModule);
+        PIL_TEMPLATE = IPILicenseTemplate(pilTemplate);
+        ROYALTY_POLICY_LAP = RoyaltyPolicyLAP(royaltyPolicyLAP);
+        ROYALTY_WORKFLOWS = IRoyaltyWorkflows(royaltyWorkflows);
+        ROYALTY_MODULE = IRoyaltyModule(royaltyModule);
+        
         topics["tweet"] = true;
         topics["discord"] = true;
         topics["telegram"] = true;
@@ -51,7 +92,9 @@ contract ClaraMarket is Context {
         matchingStrategies["leastOccupied"] = true;
         matchingStrategies["cheapest"] = true;
 
-        tasksCounter = 0;
+        tasksCounter = 1;
+
+        AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); // not sure if CAIN is the best symbol :)
     }
 
     function _assertTopic(string memory _topic) internal view {
@@ -77,13 +120,33 @@ contract ClaraMarket is Context {
         require(_fee > 0, "Fee must be positive");
         require(agents[_msgSender()].exists == false, "Agent already registered");
 
+        uint256 tokenId = AGENT_NFT.mint(address(this));
+        address ipId = IP_ASSET_REGISTRY.register(block.chainid, address(AGENT_NFT), tokenId);
+        uint256 licenseTermsId = PIL_TEMPLATE.registerLicenseTerms(
+            PILFlavors.commercialRemix({
+            mintingFee: 0,
+            commercialRevShare: 100 * 10 ** 6, // 100% - i.e. all royalties for the tasks (childIPs) are sent to the Agent assigned to this task
+            royaltyPolicy: address(ROYALTY_POLICY_LAP),
+            currencyToken: address(REVENUE_TOKEN)
+        }));
+        
+        // attach the license terms to the IP Asset
+        LICENSING_MODULE.attachLicenseTerms(ipId, address(PIL_TEMPLATE), licenseTermsId);
+
+        // transfer the NFT to the receiver so it owns the IPA
+        AGENT_NFT.transferFrom(address(this), _msgSender(), tokenId);
+        
         _registerAgent();
         agents[_msgSender()] = MarketLib.AgentInfo({
             exists: true,
             id: _msgSender(),
             topic: _topic,
             fee: _fee,
-            metadata: _metadata
+            metadata: _metadata,
+            ipAssetId: ipId,
+            canNftTokenId: tokenId,
+            licenceTermsId: licenseTermsId
+
         });
         emit RegisteredAgent(_msgSender(), agents[_msgSender()]);
     }
@@ -104,11 +167,9 @@ contract ClaraMarket is Context {
 
         agentTotals[_msgSender()].requested += 1;
 
-        uint256 newTaskId = ++tasksCounter;
-
         MarketLib.Task memory newTask = MarketLib.Task({
-            id: newTaskId,
-            contextId: _contextId == 0 ? newTaskId : _contextId,
+            id: 0,
+            contextId: _contextId == 0 ? 0 : _contextId,
             timestamp: block.timestamp,
             blockNumber: block.number,
             reward: _reward,
@@ -116,11 +177,13 @@ contract ClaraMarket is Context {
             agentId: address(0),
             matchingStrategy: _matchingStrategy,
             payload: _payload,
-            topic: _topic
+            topic: _topic,
+            childTokenId: 0,
+            childIpId: address(0)
         });
 
-        // locking SUSD on Market contract - allowance required!
-        SUSD_TOKEN.transferFrom(_msgSender(), address(this), _reward);
+        // locking Revenue Tokens on Market contract - allowance required!
+        REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _reward);
         _dispatchTasksInternal(newTask);
     }
 
@@ -155,8 +218,24 @@ contract ClaraMarket is Context {
 
         // agentResults[originalTask.requester][originalTask.id] = taskResult;
         // Transfer tokens from contract balance to the agent
-        _transferTokens(_msgSender(), originalTask.reward);
+        //_transferTokens(_msgSender(), originalTask.reward);
+        REVENUE_TOKEN.approve(address(ROYALTY_MODULE), originalTask.reward);
+        ROYALTY_MODULE.payRoyaltyOnBehalf(originalTask.childIpId, address(this), address(REVENUE_TOKEN), originalTask.reward);
 
+        address[] memory childIpIds = new address[](1);
+        address[] memory royaltyPolicies = new address[](1);
+        address[] memory currencyTokens = new address[](1);
+        childIpIds[0] = originalTask.childIpId;
+        royaltyPolicies[0] = address(ROYALTY_POLICY_LAP);
+        currencyTokens[0] = address(REVENUE_TOKEN);
+        uint256[] memory amountsClaimed = ROYALTY_WORKFLOWS.claimAllRevenue({
+            ancestorIpId: agents[_msgSender()].ipAssetId,
+            claimer: agents[_msgSender()].ipAssetId,
+            childIpIds: childIpIds,
+            royaltyPolicies: royaltyPolicies,
+            currencyTokens: currencyTokens
+        });
+        
         emit TaskResultSent(originalTask.requester, _msgSender(), originalTask.id, taskResult);
     }
 
@@ -174,6 +253,7 @@ contract ClaraMarket is Context {
             console.log(matchedAgents.length);
             require(matchedAgents.length > 0, "Could not match any agents for broadcast mode");
             uint256 rewardLeft = _task.reward;
+        
             for (uint256 k = 0; k < matchedAgents.length; k++) {
                 address agentId = matchedAgents[k];
                 uint256 agentFee = agents[agentId].fee;
@@ -189,7 +269,6 @@ contract ClaraMarket is Context {
             require(chosen != address(0), "Could not match agent for least occupied mode");
             uint256 agentFee = agents[chosen].fee;
             _storeAndSendTask(chosen, _task, agentFee);
-
         } else if (strategy == CHEAPEST) {
             address cheapest = _matchCheapest(_task.reward, _task.requester, _task.topic);
             require(cheapest != address(0), "Could not match agent for cheapest mode");
@@ -203,12 +282,74 @@ contract ClaraMarket is Context {
         MarketLib.Task memory originalTask,
         uint256 agentFee
     ) internal {
+        console.log("_storeAndSendTask");
         originalTask.reward = agentFee;
         originalTask.agentId = _agentId;
-        agentInbox[_agentId][originalTask.id] = originalTask;
+
+        uint256 taskId = tasksCounter++;
+        MarketLib.Task memory finalTask = MarketLib.Task({
+            id: taskId,
+            contextId: originalTask.contextId == 0 ? taskId : originalTask.contextId,
+            timestamp: originalTask.timestamp,
+            blockNumber: originalTask.blockNumber,
+            reward: originalTask.reward,
+            requester: originalTask.requester,
+            agentId: originalTask.agentId,
+            matchingStrategy: originalTask.matchingStrategy,
+            payload: originalTask.payload,
+            topic: originalTask.topic,
+            childTokenId: 0,
+            childIpId: address(0)
+        });
+
+        uint256 childTokenId = AGENT_NFT.mint(address(this));
+        address childIpId = IP_ASSET_REGISTRY.register(block.chainid, address(AGENT_NFT), childTokenId);
+
+        // mint a license token from the parent
+        console.log("mintLicenseTokens");
+        console.log(address(this));
+        console.log("ipAssetId", agents[_agentId].ipAssetId);
+        console.log("pilTemplate", address(PIL_TEMPLATE));
+        console.log("licenceTermsId", agents[_agentId].licenceTermsId);
+        
+        uint256 licenseTokenId = LICENSING_MODULE.mintLicenseTokens({
+            licensorIpId: agents[_agentId].ipAssetId,
+            licenseTemplate: address(PIL_TEMPLATE),
+            licenseTermsId: agents[_agentId].licenceTermsId,
+            amount: 1,
+        // mint the license token to this contract so it can
+        // use it to register as a derivative of the parent
+            receiver: address(this),
+            royaltyContext: "", // for PIL, royaltyContext is empty string
+            maxMintingFee: 0,
+            maxRevenueShare: 0
+        });
+        console.log("after mintLicenseTokens");
+
+        uint256[] memory licenseTokenIds = new uint256[](1);
+        licenseTokenIds[0] = licenseTokenId;
+
+        // register the new child IPA as a derivative
+        // of the parent
+        LICENSING_MODULE.registerDerivativeWithLicenseTokens({
+            childIpId: childIpId,
+            licenseTokenIds: licenseTokenIds,
+            royaltyContext: "", // empty for PIL
+            maxRts: 0
+        });
+        finalTask.childIpId = childIpId;
+        finalTask.childTokenId = childTokenId;
+
+        // transfer the NFT to the receiver so it owns the child IPA
+        console.log("Before transfer");
+        console.log(_agentId);
+        AGENT_NFT.transferFrom(address(this), _agentId, childTokenId);
+        console.log("after transfer");
+        
+        agentInbox[_agentId][finalTask.id] = finalTask;
         agentTotals[_agentId].assigned += 1;
 
-        emit TaskAssigned(originalTask.requester, _agentId, originalTask.id, originalTask);
+        emit TaskAssigned(finalTask.requester, _agentId, finalTask.id, finalTask);
     }
 
     function _filterAgentsWithTopicAndFee(
@@ -313,7 +454,7 @@ contract ClaraMarket is Context {
 
     function _transferTokens(address to, uint256 amount) private {
         require(to != address(0), "Cannot transfer to zero address");
-        bool ok = SUSD_TOKEN.transfer(to, amount);
+        bool ok = REVENUE_TOKEN.transfer(to, amount);
         require(ok, "Token transfer failed");
     }
 
@@ -334,7 +475,7 @@ contract ClaraMarket is Context {
     }
 
     function getPaymentsAddr() external view returns (address) {
-        return address(SUSD_TOKEN);
+        return address(REVENUE_TOKEN);
     }
 
 }

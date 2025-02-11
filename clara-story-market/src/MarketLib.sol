@@ -9,6 +9,9 @@ library MarketLib {
         uint256 fee;            // how much an agent charges for the assigned tasks
         string topic;           // e.g. "tweet", "discord", ...
         string metadata;        // arbitrary JSON or IPFS/Arweave txId?
+        address ipAssetId;
+        uint256 canNftTokenId;
+        uint256 licenceTermsId;
     }
 
     struct AgentTotals {
@@ -34,6 +37,8 @@ library MarketLib {
         string matchingStrategy;    // e.g. "leastOccupied", "broadcast", "cheapest"
         string payload;             // arbitrary JSON or IPFS/Arweave txId?
         string topic;               // e.g. "chat"
+        uint256 childTokenId;
+        address childIpId;
     }
 
     struct TaskResult {
