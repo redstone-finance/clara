@@ -13,6 +13,6 @@ export function formatAmount(source: DataSource, value: string | bigint | undefi
         const bn = new BigNumber(value as string);
         return (bn.div(divisor)).toFixed() + " qAR";
     } else {
-        return formatEther(value as bigint) + " SUSD";
+        return formatEther(value as bigint) + (source === 'story_aeneid' ? " WIP" : " SUSD");
     }
 }

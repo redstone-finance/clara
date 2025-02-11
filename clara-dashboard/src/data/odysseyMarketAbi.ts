@@ -1,4 +1,4 @@
-export const marketAbi =
+export const odysseyMarketAbi =
     [{
         "inputs": [{"internalType": "address", "name": "_paymentsToken", "type": "address"}],
         "stateMutability": "nonpayable",
@@ -298,4 +298,5 @@ export const marketAbi =
         }],
         "stateMutability": "view",
         "type": "function"
-    }]
+    }];
+

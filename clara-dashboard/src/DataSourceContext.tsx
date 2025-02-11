@@ -8,7 +8,7 @@ interface DataSourceContextType {
 const DataSourceContext = createContext<DataSourceContextType>();
 
 export const DataSourceProvider: ParentComponent = (props) => {
-    const [dataSource, setDataSource] = createSignal('ao');
+    const [dataSource, setDataSource] = createSignal('story_aeneid');
 
     return (
         <DataSourceContext.Provider value={{ dataSource, setDataSource }}>

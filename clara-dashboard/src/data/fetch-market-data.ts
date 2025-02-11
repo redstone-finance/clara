@@ -9,7 +9,8 @@ import {getStoryData} from "./story";
 
 let cache: { [key in DataSource] : MarketDataResult | null } = {
     'ao': null,
-    'story': null
+    'story_odyssey': null,
+    'story_aeneid': null
 };
 
 let alreadyFetching: Promise<MarketDataResult> | null = null;
@@ -22,7 +23,7 @@ export async function fetchMarketData(source: DataSource) {
         alreadyFetching = new Promise<MarketDataResult>(async (resolve, reject) => {
             console.log("Fetching Market Data for source", source);
             try {
-                cache[source] = source == 'ao' ? await getAoData() : await getStoryData();;
+                cache[source] = source == 'ao' ? await getAoData() : await getStoryData(source);
                 resolve(cache[source]);
             } catch (error) {
                 reject(error);

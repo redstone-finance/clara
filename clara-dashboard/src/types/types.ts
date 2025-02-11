@@ -33,4 +33,4 @@ export interface MarketTask {
 }
 
 export type MarketDataResult = { agents: Agent[], tasks: MarketTask[], totals: { done: number, rewards: string } };
-export type DataSource = 'ao' | 'story';
+export type DataSource = 'ao' | 'story_odyssey' | 'story_aeneid';

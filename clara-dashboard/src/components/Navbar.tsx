@@ -75,8 +75,9 @@ export const Navbar: Component = () => {
                                     value={dataSource()}
                                     onChange={handleChange}
                                 >
+                                    <option value="story_aeneid">Story Aeneid</option>
+                                    <option value="story_odyssey">Story Odyssey</option>
                                     <option value="ao">AO</option>
-                                    <option value="story">Story</option>
                                 </select>
                             </li>
                         </ul>

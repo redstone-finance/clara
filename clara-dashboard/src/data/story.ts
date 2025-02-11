@@ -1,43 +1,80 @@
-import {Agent, MarketDataResult, MarketTask, TaskStatus} from "../types/types";
-import {createPublicClient, http, PublicClient} from "viem";
+import {Agent, DataSource, MarketDataResult, MarketTask, TaskStatus} from "../types/types";
+import {createPublicClient, defineChain, http, PublicClient} from "viem";
 import {storyOdyssey} from "viem/chains";
-import {marketAbi} from "./marketAbi";
+import {odysseyMarketAbi} from "./odysseyMarketAbi";
+import {aeneidMarketAbi} from "./aeneidMarketAbi";
 
-const contractAddr = "0x0F3444e3a87066DdB7aC582dC776f499d44187f7";
+const contractAddrOdyssey = "0x0F3444e3a87066DdB7aC582dC776f499d44187f7";
+const contractAddrAeneid = "0x65ABFE481b20d526FAf040a9DeB5d2Baf52EcFB9";
 
 const fromBlock = 2500425n;
 
-export async function getStoryData(): Promise<MarketDataResult> {
+export async function getStoryData(source: DataSource): Promise<MarketDataResult> {
+    const contractAddr = source === 'story_odyssey'
+        ? contractAddrOdyssey
+        : contractAddrAeneid;
+
+    const fromBlock = source === 'story_odyssey'
+        ? 2500425n
+        : 662722n;
+
+    const chainDef = source === 'story_odyssey'
+        ? storyOdyssey
+        : defineChain({
+            id: 1315,
+            name: 'Story Aeneid Testnet',
+            nativeCurrency: {
+                decimals: 18,
+                name: 'IP',
+                symbol: 'IP',
+            },
+            rpcUrls: {
+                default: {http: ['https://aeneid.storyrpc.io']},
+            },
+            blockExplorers: {
+                default: {
+                    name: 'Aeneid Testnet Explorer',
+                    url: 'https://aeneid.storyscan.xyz/',
+                },
+            },
+            testnet: true,
+        });
+
+    const effectiveAbi = source === 'story_odyssey'
+        ? odysseyMarketAbi
+        : aeneidMarketAbi
+
+
     const publicClient: PublicClient = createPublicClient({
-        chain: storyOdyssey,
+        chain: chainDef,
         transport: http(),
     });
 
     const agentsPromise = publicClient.getContractEvents({
         address: contractAddr,
-        abi: marketAbi,
+        abi: effectiveAbi,
         eventName: 'RegisteredAgent',
         fromBlock,
     });
 
     const tasksPromise = publicClient.getContractEvents({
         address: contractAddr,
-        abi: marketAbi,
+        abi: effectiveAbi,
         eventName: 'TaskAssigned',
         fromBlock,
     });
 
     const tasksResultsPromise = publicClient.getContractEvents({
         address: contractAddr,
-        abi: marketAbi,
+        abi: effectiveAbi,
         eventName: 'TaskResultSent',
-        fromBlock: 2500425n,
+        fromBlock: fromBlock,
     });
 
     const marketTotalsPromise = publicClient.readContract({
         address: contractAddr,
         functionName: 'marketTotals',
-        abi: marketAbi,
+        abi: effectiveAbi,
     });
 
     const [marketTotals, agentsResult, tasksResult, tasksResultsResult] =
@@ -71,7 +108,7 @@ export async function getStoryData(): Promise<MarketDataResult> {
         return publicClient.readContract({
             address: contractAddr,
             functionName: 'agentTotals',
-            abi: marketAbi,
+            abi: effectiveAbi,
             args: [id]
         });
     });
@@ -121,11 +158,4 @@ export async function getStoryData(): Promise<MarketDataResult> {
             done: Number(marketTotals[0]), rewards: marketTotals[1],
         }
     }
-}
-
-export async function doRead(callParams: any, publicClient: PublicClient) {
-    return publicClient.readContract({
-        ...callParams,
-        abi: marketAbi,
-    });
 }
