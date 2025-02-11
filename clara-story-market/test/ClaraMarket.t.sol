@@ -3,92 +3,150 @@ pragma solidity ^0.8.26;
 
 import {ClaraMarket} from "../src/ClaraMarket.sol";
 import {MarketLib} from "../src/MarketLib.sol";
-import {SUSD} from "../src/mocks/SUSD.sol";
+import {RevenueToken} from "../src/mocks/RevenueToken.sol";
+import {AgentNFT} from "../src/mocks/AgentNFT.sol";
 import {CommonBase} from "forge-std/Base.sol";
 import {StdChains} from "forge-std/StdChains.sol";
 import {StdCheats, StdCheatsSafe} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
+import { MockIPGraph } from "@storyprotocol/test/mocks/MockIPGraph.sol";
+import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.sol";
+import { LicenseRegistry } from "@storyprotocol/core/registries/LicenseRegistry.sol";
 
+
+// TODO: Update to IP Asset version
 contract AgentsMarketTest is Test {
-    SUSD internal susdToken;
+    RevenueToken internal revToken;
     ClaraMarket internal market;
+    AgentNFT internal agentNft;
 
     // Two test addresses
-    address internal user1 = address(0x1111);
-    address internal user2 = address(0x2222);
+    address internal agent_1 = address(0x1111);
+    address internal agent_2 = address(0x2222);
 
+    // "IPAssetRegistry": "0x77319B4031e6eF1250907aa00018B8B1c67a244b",
+    address internal ipAssetRegistry = 0x77319B4031e6eF1250907aa00018B8B1c67a244b;
+    // "LicensingModule": "0x04fbd8a2e56dd85CFD5500A4A4DfA955B9f1dE6f",
+    address internal licensingModule = 0x04fbd8a2e56dd85CFD5500A4A4DfA955B9f1dE6f;
+    // "PILicenseTemplate": "0x2E896b0b2Fdb7457499B56AAaA4AE55BCB4Cd316",
+    address internal pilTemplate = 0x2E896b0b2Fdb7457499B56AAaA4AE55BCB4Cd316;
+    // "RoyaltyPolicyLAP": "0xBe54FB168b3c982b7AaE60dB6CF75Bd8447b390E",
+    address internal royaltyPolicyLAP = 0xBe54FB168b3c982b7AaE60dB6CF75Bd8447b390E;
+    // "RoyaltyWorkflows": "0x9515faE61E0c0447C6AC6dEe5628A2097aFE1890",
+    address internal royaltyWorkflows = 0x9515faE61E0c0447C6AC6dEe5628A2097aFE1890;
+    //  "RoyaltyModule": "0xD2f60c40fEbccf6311f8B47c4f2Ec6b040400086",
+    address internal royaltyModule = 0xD2f60c40fEbccf6311f8B47c4f2Ec6b040400086;
+    // "WIP": "0x1514000000000000000000000000000000000000"
+    address payable internal _revenueToken = payable(0x1514000000000000000000000000000000000000);
+
+    // Protocol Core - LicenseRegistry
+    address internal licenseRegistry = 0x529a750E02d8E2f15649c13D69a465286a780e24;
+   
     function setUp() public {
-        // 1. Deploy a mock SUSD token
-        susdToken = new SUSD();
+        // this is only for testing purposes
+        // due to our IPGraph precompile not being
+        // deployed on the fork
+        vm.etch(address(0x0101), address(new MockIPGraph()).code);
+        
+        revToken = RevenueToken(_revenueToken);
 
         // 2. Mint some tokens to our test users
-        susdToken.mint(user1, 1_000_000 ether);
-        susdToken.mint(user2, 1_000_000 ether);
+        vm.startPrank(agent_1);
+        vm.deal(agent_1, 10000 ether);
+        revToken.deposit{value: 1000 ether}();
+        vm.stopPrank();
+        vm.startPrank(agent_2);
+        vm.deal(agent_2, 10000 ether);
+        revToken.deposit{value: 1000 ether}();
+        vm.stopPrank();
 
-        // 3. Deploy the AgentsMarket contract and pass the SUSD address
-        market = new ClaraMarket(address(susdToken));
+        // 3. Deploy the ClaraMarket contract
+        market = new ClaraMarket(
+            ipAssetRegistry,
+            licensingModule,
+            pilTemplate,
+            royaltyPolicyLAP,
+            royaltyWorkflows,
+            royaltyModule,
+            _revenueToken);
+
+        agentNft = AgentNFT(market.AGENT_NFT());
     }
 
     function testRegisterAgentProfile() public {
-        vm.startPrank(user1);
+        vm.startPrank(agent_1);
+        IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+        LicenseRegistry LICENSE_REGISTRY = LicenseRegistry(licenseRegistry);
 
-        string memory topic = "chat";
-        uint256 fee = 50;
-        string memory metadata = "some metadata";
+        uint256 expectedTokenId = agentNft.nextTokenId();
+        address expectedIpId = IP_ASSET_REGISTRY.ipId(block.chainid, address(agentNft), expectedTokenId);
 
-        vm.expectEmit(true, false, false, true);
-        emit RegisteredAgent(user1, MarketLib.AgentInfo({
-            exists: true,
-            id: user1,
-            fee: fee,
-            topic: topic,
-            metadata: metadata
-        }));
-
-        market.registerAgentProfile(fee, topic, metadata);
+        market.registerAgentProfile(50, "chat", "some metadata");
+        (address licenseTemplate, uint256 attachedLicenseTermsId) = LICENSE_REGISTRY.getAttachedLicenseTerms({
+            ipId: expectedIpId,
+            index: 0
+        });
+        
         vm.stopPrank();
-
         (
             bool exists,
             address id,
             uint256 storedFee,
             string memory storedTopic,
-            string memory storedMetadata
-        ) = market.agents(user1);
+            string memory storedMetadata,
+            address ipAssetId,
+            uint256 canNftTokenId,
+            uint256 licenceTermsId
+        ) = market.agents(agent_1);
 
         assertTrue(exists, "Agent should exist after registration");
-        assertEq(id, user1, "Agent address mismatch");
-        assertEq(storedTopic, topic, "Agent topic mismatch");
-        assertEq(storedFee, fee, "Agent fee mismatch");
-        assertEq(storedMetadata, metadata, "Agent metadata mismatch");
+        assertEq(id, agent_1, "Agent address mismatch");
+        assertEq(storedTopic, "chat", "Agent topic mismatch");
+        assertEq(storedFee, 50, "Agent fee mismatch");
+        assertEq(storedMetadata, "some metadata", "Agent metadata mismatch");
+        assertEq(ipAssetId, expectedIpId, "IP Asset ID mismatch");
+        assertEq(canNftTokenId, expectedTokenId, "Token ID mismatch");
+        assertEq(licenceTermsId, attachedLicenseTermsId, "License terms ID mismatch");
     }
 
     function testRegisterTask() public {
-        vm.startPrank(user1);
+        IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+
+        vm.startPrank(agent_1);
         market.registerAgentProfile(50, "chat", "some metadata");
         vm.stopPrank();
 
-        vm.startPrank(user2);
+        vm.startPrank(agent_2);
         market.registerAgentProfile(10, "chat", "another agent");
         vm.stopPrank();
 
-        vm.startPrank(user2);
-        susdToken.approve(address(market), 500 ether);
-
-        vm.expectEmit(true, true, true, false);
-        emit TaskAssigned(user2,user1,  1, MarketLib.Task({
-            id: 1,
-            contextId: 1,
-            timestamp: 1,
-            blockNumber: 1,
-            reward: 100 ether,
-            requester: user2,
-            agentId: user1,
+        vm.startPrank(agent_2);
+        revToken.approve(address(market), 500 ether);
+        uint256 expectedTokenId = agentNft.nextTokenId();
+        address expectedIpId = IP_ASSET_REGISTRY.ipId(block.chainid, address(agentNft), expectedTokenId);
+        uint256 expectedTaskId = market.tasksCounter();
+        console.log("expectedTaskId", expectedTaskId);
+        console.log("expectedIpId", expectedIpId);
+        console.log("expectedChildTokenId", expectedTokenId);
+        console.log("block.number", block.number);
+        console.log("block.timestamp", block.timestamp);
+        
+        vm.expectEmit(true, true, true, false); // TODO: fix checkData
+        emit TaskAssigned(agent_2, agent_1,  expectedTaskId, MarketLib.Task({
+            id: expectedTaskId,
+            contextId: expectedTaskId,
+            timestamp: block.timestamp,
+            blockNumber: block.number,
+            reward: 50 ether, // cause that's the assigned agent's fee
+            requester: agent_2,
+            agentId: agent_1,
             matchingStrategy: "broadcast",
             payload: "task payload",
-            topic: "chat"
+            topic: "chat",
+            childTokenId: expectedTokenId,
+            childIpId: expectedIpId
         }));
 
         uint256 reward = 100 ether;
@@ -100,28 +158,25 @@ contract AgentsMarketTest is Test {
             "task payload"
         );
 
-        uint256 marketBalance = susdToken.balanceOf(address(market));
+        uint256 marketBalance = revToken.balanceOf(address(market));
         assertEq(marketBalance, reward, "Market contract should hold the reward");
 
-        // QueueLib.Queue memory tasks = market.tasksQueue();
-        //assertEq(market.tasksQueue().length(), 1, "taskQueue might be empty if _dispatchTasksInternal assigned it immediately");
-        //console.log(tasks[0].id);
         vm.stopPrank();
     }
-
+    
     function testSendResult() public {
-        vm.startPrank(user1);
+        vm.startPrank(agent_1);
         market.registerAgentProfile(100 ether, "chat", "metadataA");
         vm.stopPrank();
 
-        vm.startPrank(user2);
+        vm.startPrank(agent_2);
         market.registerAgentProfile(20, "chat", "metadataB");
         vm.stopPrank();
 
         uint256 rewardAmount = 100 ether;
 
-        vm.startPrank(user2);
-        susdToken.approve(address(market), rewardAmount);
+        vm.startPrank(agent_2);
+        revToken.approve(address(market), rewardAmount);
 
         market.registerTask(
             rewardAmount,
@@ -133,30 +188,39 @@ contract AgentsMarketTest is Test {
 
         vm.stopPrank();
 
-        vm.startPrank(user1);
+        vm.startPrank(agent_1);
         uint256 assignedTaskId = 1;
 
         string memory resultJSON = "{\"status\":\"done\"}";
 
         vm.expectEmit(true, true, true, true);
-        emit TaskResultSent(user2, user1, assignedTaskId, MarketLib.TaskResult({
+        emit TaskResultSent(agent_2, agent_1, assignedTaskId, MarketLib.TaskResult({
             id: assignedTaskId,
-            timestamp: 1,
-            blockNumber: 1,
+            timestamp: block.timestamp,
+            blockNumber: block.number,
             result: resultJSON
         }));
 
         market.sendResult(assignedTaskId, resultJSON);
         vm.stopPrank();
 
-        uint256 finalUser1Bal = susdToken.balanceOf(user1);
-        assertEq(finalUser1Bal, 1_000_000 ether + 100 ether, "AgentA did not receive reward");
+        (bool exists,            // ensures we know if the agent is registered
+        address id, // agent's wallet
+        uint256 fee,            // how much an agent charges for the assigned tasks
+        string memory topic,           // e.g. "tweet", "discord", ...
+        string memory metadata,        // arbitrary JSON or IPFS/Arweave txId?
+        address ipAssetId,
+        uint256 canNftTokenId,
+        uint256 licenceTermsId) = market.agents(agent_1);
+
+        // Check that Agent's 1 IP Account now has 100 WIPs in its balance.
+        assertEq(revToken.balanceOf(ipAssetId), 100 ether);
 
         (uint256 requested,
             uint256 assigned,
             uint256 done,
             uint256 rewards
-        ) = market.agentTotals(user1);
+        ) = market.agentTotals(agent_1);
         assertEq(requested, 0, "AgentA never requested tasks");
         assertEq(assigned, 1, "AgentA should have 1 assigned task");
         assertEq(done, 1, "AgentA should have done 1 task");

@@ -26,7 +26,7 @@ export class ClaraMarketStory {
       account,
     }, publicClient, walletClient);
 
-    console.log(`Agent Registered: https://odyssey.storyscan.xyz/tx/${txId}`);
+    console.log(`Agent Registered: https://aeneid.storyscan.xyz/tx/${txId}`);
     return new ClaraProfileStory(privateKey, this.#contractAddress);
   }
 

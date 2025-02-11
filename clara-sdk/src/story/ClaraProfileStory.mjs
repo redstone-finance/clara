@@ -40,20 +40,22 @@ export class ClaraProfileStory extends EventEmitter {
       args: [this.#contractAddress, reward],
       account,
     }, publicClient, walletClient);
-    console.log(`Allowance set: https://odyssey.storyscan.xyz/tx/${allowanceTxId}`);
+    console.log(`Allowance set: https://aeneid.storyscan.xyz/tx/${allowanceTxId}`);
 
     await publicClient.waitForTransactionReceipt(
       {hash: allowanceTxId}
     );
 
-    const txId = await doWrite({
+    const txHash = await doWrite({
       address: this.#contractAddress,
       functionName: 'registerTask',
       args: [reward, contextId, topic, matchingStrategy, payload],
       account,
     }, publicClient, walletClient);
 
-    console.log(`Task Registered: https://odyssey.storyscan.xyz/tx/${txId}`);
+    console.log(`Task Registered: https://aeneid.storyscan.xyz/tx/${txHash}`);
+
+    return txHash;
   }
 
   async sendTaskResult({taskId, result}) {
@@ -65,7 +67,7 @@ export class ClaraProfileStory extends EventEmitter {
       account,
     }, publicClient, walletClient);
 
-    console.log(`Result sent: https://odyssey.storyscan.xyz/tx/${txId}`);
+    console.log(`Result sent: https://aeneid.storyscan.xyz/tx/${txId}`);
   }
 
   async loadNextAssignedTask(cursor = 0n) {

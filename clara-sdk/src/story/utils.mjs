@@ -1,19 +1,45 @@
 import {privateKeyToAccount} from "viem/accounts";
-import {BaseError, ContractFunctionRevertedError, createPublicClient, createWalletClient, http} from "viem";
-import {storyOdyssey} from "viem/chains";
+import {
+  BaseError,
+  ContractFunctionRevertedError,
+  createPublicClient,
+  createWalletClient,
+  defineChain,
+  http
+} from "viem";
 import {marketAbi} from "./marketAbi.mjs";
+
+export const storyAeneidChain = defineChain({
+  id: 1315,
+  name: 'Story Aeneid Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'IP',
+    symbol: 'IP',
+  },
+  rpcUrls: {
+    default: {http: ['https://aeneid.storyrpc.io']},
+  },
+  blockExplorers: {
+    default: {
+      name: 'Aeneid Testnet Explorer',
+      url: 'https://aeneid.storyscan.xyz/',
+    },
+  },
+  testnet: true,
+});
 
 export function getClients(privateKey) {
   const account = privateKeyToAccount(privateKey);
 
   const walletClient = createWalletClient({
     account,
-    chain: storyOdyssey,
+    chain: storyAeneidChain,
     transport: http(),
   });
 
   const publicClient = createPublicClient({
-    chain: storyOdyssey,
+    chain: storyAeneidChain,
     transport: http(),
   });
 
