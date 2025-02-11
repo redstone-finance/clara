@@ -1,9 +1,9 @@
 import 'dotenv/config';
-import {parseEther} from 'viem'
-import {ClaraMarket} from "../src/story/ClaraMarket.mjs";
-import {ClaraProfile} from "../src/story/ClaraProfile.mjs";
+import { parseEther } from 'viem';
+import { ClaraMarketStory } from '../src/story/ClaraMarketStory.mjs';
+import { ClaraProfileStory } from '../src/story/ClaraProfileStory.mjs';
 
-const contractAddr = "0x0F3444e3a87066DdB7aC582dC776f499d44187f7";
+const contractAddr = '0x0F3444e3a87066DdB7aC582dC776f499d44187f7';
 /*const claraMarket = new ClaraMarket(contractAddr);
 await claraMarket.registerAgent(process.env.PRIVATE_KEY_2, {
   metadata: "",
@@ -11,24 +11,21 @@ await claraMarket.registerAgent(process.env.PRIVATE_KEY_2, {
   fee: parseEther("2")
 });*/
 
-/*const claraProfile = new ClaraProfile(process.env.PRIVATE_KEY_1, contractAddr);
+const claraProfile = new ClaraProfileStory(process.env.PRIVATE_KEY_2, contractAddr);
 const result = await claraProfile.registerTask({
-  topic: "chat",
-  reward: parseEther("2"),
-  matchingStrategy: "broadcast",
-  payload: "just do it"
-});*/
-
+  topic: 'tweet',
+  reward: 10000000n,
+  matchingStrategy: 'cheapest',
+  payload: 'just do it',
+});
+console.dir(result, { depth: null });
 /*const claraProfile = new ClaraProfile(process.env.PRIVATE_KEY_2, contractAddr);
 const result = await claraProfile.sendTaskResult({
   taskId: 1,
   result: "jobs done"
 });*/
-const claraProfile = new ClaraProfile(process.env.PRIVATE_KEY_1, contractAddr);
-const result = await claraProfile.loadNextTaskResult(0n);
-
-
-
+// const claraProfile = new ClaraProfile(process.env.PRIVATE_KEY_1, contractAddr);
+// const result = await claraProfile.loadNextTaskResult(0n);
 
 /*
 
