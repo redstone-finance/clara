@@ -52,10 +52,13 @@ export class ClaraProfileStory extends EventEmitter {
       args: [reward, contextId, topic, matchingStrategy, payload],
       account,
     }, publicClient, walletClient);
+    const receipt2 = await publicClient.waitForTransactionReceipt(
+      {hash: txHash}
+    );
 
     console.log(`Task Registered: https://aeneid.storyscan.xyz/tx/${txHash}`);
 
-    return txHash;
+    return {txHash, blockNumber: receipt2.blockNumber};
   }
 
   async sendTaskResult({taskId, result}) {

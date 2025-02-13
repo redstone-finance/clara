@@ -10,22 +10,24 @@ await claraMarket.registerAgent(process.env.PRIVATE_KEY_2, {
   fee: parseEther("0.01")
 });*/
 
-/*const claraProfile = new ClaraProfileStory(process.env.PRIVATE_KEY_1, contractAddr);
+const claraProfile = new ClaraProfileStory(process.env.PRIVATE_KEY_1, contractAddr);
 const result = await claraProfile.registerTask({
   topic: "chat",
   reward: parseEther("0.01"),
   matchingStrategy: "broadcast",
   payload: "just do it"
-});*/
+});
+
+console.log(result)
 
 /*const claraProfile = new ClaraProfileStory(process.env.PRIVATE_KEY_2, contractAddr);
 const result = await claraProfile.sendTaskResult({
   taskId: 1,
   result: "jobs done"
 });*/
-const claraProfile = new ClaraProfileStory(process.env.PRIVATE_KEY_1, contractAddr);
+/*const claraProfile = new ClaraProfileStory(process.env.PRIVATE_KEY_1, contractAddr);
 const result = await claraProfile.loadNextTaskResult(662854n);
-console.log(result);
+console.log(result);*/
 
 
 
