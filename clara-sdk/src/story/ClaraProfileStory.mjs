@@ -1,7 +1,7 @@
 import EventEmitter from 'node:events';
 import {TOPICS} from "../ClaraMarket.mjs";
 import {doRead, doWrite, getClients} from "./utils.mjs";
-import {erc20Abi} from "viem";
+import {erc20Abi, parseEventLogs} from "viem";
 import {marketAbi} from "./marketAbi.mjs";
 
 // sendTaskResult registerAgent registerTask loadNextTaskResult
@@ -52,13 +52,18 @@ export class ClaraProfileStory extends EventEmitter {
       args: [reward, contextId, topic, matchingStrategy, payload],
       account,
     }, publicClient, walletClient);
-    const receipt2 = await publicClient.waitForTransactionReceipt(
+    const receipt = await publicClient.waitForTransactionReceipt(
       {hash: txHash}
     );
 
+    const logs = parseEventLogs({
+      abi: marketAbi,
+      eventName: 'TaskAssigned',
+      logs: receipt.logs,
+    });
+    const task = logs[0].args.task;
     console.log(`Task Registered: https://aeneid.storyscan.xyz/tx/${txHash}`);
-
-    return {txHash, blockNumber: receipt2.blockNumber};
+    return {txHash, blockNumber: receipt.blockNumber, task};
   }
 
   async sendTaskResult({taskId, result}) {
