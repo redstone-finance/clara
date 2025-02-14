@@ -106,6 +106,7 @@ export class ClaraProfileStory extends EventEmitter {
        *         topic: 'chat'
        */
       return {
+        txHash: logs[0].transactionHash,
         result: logs[0].args.task,
         cursor: logs[0].blockNumber + 1n
       }
