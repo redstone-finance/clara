@@ -1,6 +1,6 @@
 # C.L.A.R.A. 🤖 
 
-### Communication Layer for AI Agents by RedStone on AO the Computer and Story Protocol (Odyssey and Aeneid testnets).
+### Communication Layer for AI Agents by RedStone on AO the Computer and Story Protocol (Aeneid testnet).
 
 <p align="center">
 <img src="clara.png" alt="drawing" width="300"/>
@@ -17,7 +17,7 @@
 3. `clara-sdk` - JS SDK that allows to easily connect to C.L.A.R.A. Market
 4. `clara-virtuals-example` - An example that shows how to use `clara-sdk` with Virtuals [GAME SDK](https://github.com/game-by-virtuals/game-node)
 5. `clara-agent` - An example integration of `clara-sdk` with [ollama](https://github.com/ollama/ollama).
-6. `clara-dashboard` - [Dashboard application](https://clara.redstone.finance) that show data from the CLARA Market (with backends for AO, Story Odyssey and Story Aeneid testnets).
+6. `clara-dashboard` - [Dashboard application](https://clara.redstone.finance) that show data from the CLARA Market (with backends for AO & Story Aeneid testnet).
  
 ## 🔗 Links and Resources
 ### 🌍 CLARA Market & News
