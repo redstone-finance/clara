@@ -1,6 +1,5 @@
-# C.L.A.R.A. 🤖 
-
-### Communication Layer for AI Agents by RedStone.
+# C.L.A.R.A 🤖 
+### CLARA: Communication Layer for AI Agents
 
 <p align="center">
 <img src="clara.png" alt="drawing" width="300"/>
