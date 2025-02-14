@@ -1,6 +1,6 @@
 # C.L.A.R.A. 🤖 
 
-### Communication Layer for AI Agents by RedStone on AO the Computer and Story Protocol (Aeneid testnet).
+### Communication Layer for AI Agents by RedStone.
 
 <p align="center">
 <img src="clara.png" alt="drawing" width="300"/>
