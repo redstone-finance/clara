@@ -1,8 +1,8 @@
 import EventEmitter from 'node:events';
-import {TOPICS} from "../ClaraMarket.mjs";
-import {doRead, doWrite, getClients} from "./utils.mjs";
-import {erc20Abi, parseEventLogs} from "viem";
-import {marketAbi} from "./marketAbi.mjs";
+import { TOPICS } from '../ClaraMarket.mjs';
+import { doRead, doWrite, getClients } from './utils.mjs';
+import { erc20Abi, parseEventLogs } from 'viem';
+import { marketAbi } from './marketAbi.mjs';
 
 // sendTaskResult registerAgent registerTask loadNextTaskResult
 export class ClaraProfileStory extends EventEmitter {
@@ -15,46 +15,53 @@ export class ClaraProfileStory extends EventEmitter {
       throw new Error('C.L.A.R.A. Market contract address required');
     }
     this.#contractAddress = contractAddress;
-    const {account, publicClient, walletClient} = getClients(privateKey);
-    this.#agent = {id: account.address, account, publicClient, walletClient};
+    const { account, publicClient, walletClient } = getClients(privateKey);
+    this.#agent = { id: account.address, account, publicClient, walletClient };
   }
 
-  async registerTask({topic, reward, matchingStrategy, payload, contextId = 0}) {
+  async registerTask({ topic, reward, matchingStrategy, payload, contextId = 0 }) {
     if (!TOPICS.includes(topic)) {
       throw new Error(`Unknown topic ${topic}, allowed ${JSON.stringify(TOPICS)}`);
     }
-    const {account, publicClient, walletClient} = this.#agent;
+    const { account, publicClient, walletClient } = this.#agent;
 
     // (o) check payment token address
-    const paymentTokenAddr = await doRead({
-      address: this.#contractAddress,
-      functionName: 'getPaymentsAddr'
-    }, publicClient);
-    console.log("Payment token: ", paymentTokenAddr);
+    const paymentTokenAddr = await doRead(
+      {
+        address: this.#contractAddress,
+        functionName: 'getPaymentsAddr',
+      },
+      publicClient
+    );
+    console.log('Payment token: ', paymentTokenAddr);
 
     // (o) set allowance on token for the market contract
-    const allowanceTxId = await doWrite({
-      abi: erc20Abi,
-      address: paymentTokenAddr,
-      functionName: 'approve',
-      args: [this.#contractAddress, reward],
-      account,
-    }, publicClient, walletClient);
-    console.log(`Allowance set: https://aeneid.storyscan.xyz/tx/${allowanceTxId}`);
-
-    await publicClient.waitForTransactionReceipt(
-      {hash: allowanceTxId}
+    const allowanceTxId = await doWrite(
+      {
+        abi: erc20Abi,
+        address: paymentTokenAddr,
+        functionName: 'approve',
+        args: [this.#contractAddress, reward],
+        account,
+      },
+      publicClient,
+      walletClient
     );
+    console.log(`Allowance set: https://storyscan.xyz/tx/${allowanceTxId}`);
 
-    const txHash = await doWrite({
-      address: this.#contractAddress,
-      functionName: 'registerTask',
-      args: [reward, contextId, topic, matchingStrategy, payload],
-      account,
-    }, publicClient, walletClient);
-    const receipt = await publicClient.waitForTransactionReceipt(
-      {hash: txHash}
+    await publicClient.waitForTransactionReceipt({ hash: allowanceTxId });
+
+    const txHash = await doWrite(
+      {
+        address: this.#contractAddress,
+        functionName: 'registerTask',
+        args: [reward, contextId, topic, matchingStrategy, payload],
+        account,
+      },
+      publicClient,
+      walletClient
     );
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
     const logs = parseEventLogs({
       abi: marketAbi,
@@ -62,24 +69,28 @@ export class ClaraProfileStory extends EventEmitter {
       logs: receipt.logs,
     });
     const task = logs[0].args.task;
-    console.log(`Task Registered: https://aeneid.storyscan.xyz/tx/${txHash}`);
-    return {txHash, blockNumber: receipt.blockNumber, task};
+    console.log(`Task Registered: https://storyscan.xyz/tx/${txHash}`);
+    return { txHash, blockNumber: receipt.blockNumber, task };
   }
 
-  async sendTaskResult({taskId, result}) {
-    const {account, publicClient, walletClient} = this.#agent;
-    const txId = await doWrite({
-      address: this.#contractAddress,
-      functionName: 'sendResult',
-      args: [taskId, result],
-      account,
-    }, publicClient, walletClient);
+  async sendTaskResult({ taskId, result }) {
+    const { account, publicClient, walletClient } = this.#agent;
+    const txId = await doWrite(
+      {
+        address: this.#contractAddress,
+        functionName: 'sendResult',
+        args: [taskId, result],
+        account,
+      },
+      publicClient,
+      walletClient
+    );
 
-    console.log(`Result sent: https://aeneid.storyscan.xyz/tx/${txId}`);
+    console.log(`Result sent: https://storyscan.xyz/tx/${txId}`);
   }
 
   async loadNextAssignedTask(cursor = 0n) {
-    const {publicClient} = this.#agent;
+    const { publicClient } = this.#agent;
     const blockHeight = await publicClient.getBlockNumber();
     const logs = await publicClient.getContractEvents({
       address: this.#contractAddress,
@@ -89,7 +100,7 @@ export class ClaraProfileStory extends EventEmitter {
         assignedAgent: this.#agent.id,
       },
       fromBlock: cursor,
-      toBlock: blockHeight
+      toBlock: blockHeight,
     });
     if (logs.length > 0) {
       //eg
@@ -107,18 +118,18 @@ export class ClaraProfileStory extends EventEmitter {
        */
       return {
         result: logs[0].args.task,
-        cursor: logs[0].blockNumber + 1n
-      }
+        cursor: logs[0].blockNumber + 1n,
+      };
     } else {
       return {
         result: null,
-        cursor: blockHeight + 1n
-      }
+        cursor: blockHeight + 1n,
+      };
     }
   }
 
   async loadNextTaskResult(cursor = 0n) {
-    const {publicClient} = this.#agent;
+    const { publicClient } = this.#agent;
     const blockHeight = await publicClient.getBlockNumber();
     const logs = await publicClient.getContractEvents({
       address: this.#contractAddress,
@@ -128,7 +139,7 @@ export class ClaraProfileStory extends EventEmitter {
         requestingAgent: this.#agent.id,
       },
       fromBlock: cursor,
-      toBlock: blockHeight
+      toBlock: blockHeight,
     });
     if (logs.length > 0) {
       //eg
@@ -140,13 +151,13 @@ export class ClaraProfileStory extends EventEmitter {
        */
       return {
         result: logs[0].args.taskResult,
-        cursor: logs[0].blockNumber + 1n
-      }
+        cursor: logs[0].blockNumber + 1n,
+      };
     } else {
       return {
         result: null,
-        cursor: blockHeight + 1n
-      }
+        cursor: blockHeight + 1n,
+      };
     }
   }
 }
