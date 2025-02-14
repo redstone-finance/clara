@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-forge test --fork-url https://aeneid.storyrpc.io/ --match-path test/ClaraMarket.t.sol -vvv
+forge test --fork-url https://mainnet.storyrpc.io/ --match-path test/ClaraMarket.t.sol -vvv
