@@ -1,8 +1,8 @@
 export async function fetchTransactions(agentAddress, processId, after) {
-  const url = 'https://arweave-search.goldsky.com/graphql';
+  const url = "https://arweave-search.goldsky.com/graphql";
   const headers = {
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Content-Type': 'application/json',
+    "Accept-Encoding": "gzip, deflate, br",
+    "Content-Type": "application/json",
   };
 
   // FIXME: pass params properly
@@ -37,14 +37,14 @@ export async function fetchTransactions(agentAddress, processId, after) {
         }
       }
     }
-`
+`,
   });
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers: headers,
     body: body,
-    keepalive: true
+    keepalive: true,
   });
 
   if (!response.ok) {
@@ -53,7 +53,7 @@ export async function fetchTransactions(agentAddress, processId, after) {
 
   const result = await response.json();
   return result.data.transactions.edges;
-};
+}
 
 export async function loadTxData(txId) {
   const response = await fetch(`https://arweave.net/${txId}`);

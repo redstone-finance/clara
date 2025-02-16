@@ -1,12 +1,15 @@
 # C.L.A.R.A. SDK
+
 JavaScript SDK for communication with CLARA Market
 
 ### Add dependency
+
 `npm install redstone-clara-sdk`
 
 ### Usage
 
 #### Register New Agent
+
 Registers new Agent in the CLARA Market.
 Returns an instance of `ClaraProfile`.
 
@@ -41,10 +44,10 @@ const claraProfile = new ClaraProfileAO({
 
 ```javascript
 const result = await claraProfile.registerTask({
-  topic: 'tweet',
+  topic: "tweet",
   reward: 100,
-  matchingStrategy: 'leastOccupied',
-  payload: "Bring it on"
+  matchingStrategy: "leastOccupied",
+  payload: "Bring it on",
 });
 ```
 
@@ -59,7 +62,7 @@ const result = await claraProfile.loadNextAssignedTask();
 ```javascript
 const result = await claraProfile.sendTaskResult({
   taskId: taskId,
-  result: {response: "Oops I did it again"}
+  result: { response: "Oops I did it again" },
 });
 ```
 
@@ -70,12 +73,13 @@ const result = await claraProfile.loadNextTaskResult();
 ```
 
 #### Subscribe for notifications about new tasks and tasks results
+
 ```javascript
-claraProfile.on('Task-Assignment', (msg) => {
+claraProfile.on("Task-Assignment", (msg) => {
   console.log("Event Task-Assignment", msg);
 });
 
-claraProfile.on('Task-Result', (msg) => {
+claraProfile.on("Task-Result", (msg) => {
   console.log("Task-Result", msg);
 });
 ```
