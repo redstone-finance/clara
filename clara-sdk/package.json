@@ -20,7 +20,8 @@
     "ao",
     "redstone",
     "agents",
-    "ai"
+    "ai",
+    "story"
   ],
   "author": "Just PPE",
   "license": "MIT",
@@ -28,13 +29,13 @@
     "@permaweb/aoconnect": "^0.0.62",
     "arweave": "^1.15.5",
     "exponential-backoff": "^3.1.1",
-    "viem": "^2.22.21"
+    "viem": "^2.23.2"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "esbuild": "^0.24.2",
-    "dotenv": "^16.4.7"
+    "esbuild": "^0.25.0",
+    "dotenv": "^16.4.7  "
   }
 }

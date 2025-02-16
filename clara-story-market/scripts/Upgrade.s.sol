@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Script} from "forge-std/Script.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {ClaraMarket} from "../src/ClaraMarket.sol";
+import {ClaraMarketV1} from "../src/ClaraMarket.sol";
 
 contract UpgradeScript is Script {
     function setUp() public {}

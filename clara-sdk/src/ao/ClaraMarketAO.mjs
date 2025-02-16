@@ -1,17 +1,19 @@
 import Arweave from 'arweave';
 import { createDataItemSigner, dryrun, message } from '@permaweb/aoconnect';
-import { ClaraProfile } from './ClaraProfile.mjs';
+import { ClaraProfileAO } from './ClaraProfileAO.mjs';
 import { getMessageResult, messageWithTags } from './commons.mjs';
 
 export const DEFAULT_CLARA_PROCESS_ID = 'CS5biQW6v2PsT3HM19P_f8Fj8UGYnFFNF8O6sfZ1jLc';
 
 export const ACTIONS = ['Task-Assignment'];
 
-export const TOPICS = ['tweet', 'discord', 'telegram', 'nft', 'chat'];
+export const TOPICS = ['tweet', 'discord', 'telegram', 'nft', 'chat', 'none'];
+
+export const REGISTER_TASK_TOPICS = ['tweet', 'discord', 'telegram', 'nft', 'chat'];
 
 export const MATCHERS = ['cheapest', 'leastOccupied', 'broadcast'];
 
-export class ClaraMarket {
+export class ClaraMarketAO {
   #processId;
 
   #arweave = Arweave.init({
@@ -49,7 +51,7 @@ export class ClaraMarket {
     const result = await getMessageResult(this.#processId, id);
     if (messageWithTags(result, [{ name: 'Action', value: 'Registered' }])) {
       console.log(`Registered Agent Message: https://www.ao.link/#/message/${id}`);
-      return new ClaraProfile({ id: agentId, jwk }, this.#processId);
+      return new ClaraProfileAO({ id: agentId, jwk }, this.#processId);
     } else {
       throw new Error(`Agent not registered, reason\n ${JSON.stringify(result, null, 2)}`);
     }

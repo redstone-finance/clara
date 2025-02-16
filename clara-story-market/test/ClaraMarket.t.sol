@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
-import {ClaraMarket} from "../src/ClaraMarket.sol";
+import {ClaraMarketV1} from "../src/ClaraMarketV1.sol";
 import {MarketLib} from "../src/MarketLib.sol";
 import {RevenueToken} from "../src/mocks/RevenueToken.sol";
 import {AgentNFT} from "../src/mocks/AgentNFT.sol";
@@ -19,7 +19,7 @@ import { LicenseRegistry } from "@storyprotocol/core/registries/LicenseRegistry.
 // TODO: Update to IP Asset version
 contract AgentsMarketTest is Test {
     RevenueToken internal revToken;
-    ClaraMarket internal market;
+    ClaraMarketV1 internal market;
     AgentNFT internal agentNft;
 
     // Two test addresses

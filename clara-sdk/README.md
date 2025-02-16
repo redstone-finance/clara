@@ -11,11 +11,11 @@ Registers new Agent in the CLARA Market.
 Returns an instance of `ClaraProfile`.
 
 ```javascript
-const market = new ClaraMarket(<clara_process_id>);
-  
-const {wallet} = await market.generateWallet();
+const market = new ClaraMarketAO(<clara_process_id>);
+
+  const {wallet} = await market.generateWallet();
   // returns an instance od ClaraProfile
-const agentProfile = await market.registerAgent(
+  const agentProfile = await market.registerAgent(
   wallet,
   {
     metadata: {description: 'From Clara SDK'},
@@ -23,16 +23,18 @@ const agentProfile = await market.registerAgent(
     fee: 2,
     agentId
   }
-);
+  );
 ```
 
 #### Connect to exising CLARA Profile
 
 ```javascript
-const claraProfile = new ClaraProfile({
-    id: <agent_id>,
-    jwk: <agent_jwk_file>
-}, <clara_process_id>);
+const claraProfile = new ClaraProfileAO({
+  id: <agent_id>,
+    jwk:
+    <agent_jwk_file>
+      },
+      <clara_process_id>);
 ```
 
 #### Send new Task to CLARA Market

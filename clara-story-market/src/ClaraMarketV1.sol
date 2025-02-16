@@ -21,7 +21,7 @@ import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721H
 /**
  * @title ClaraMarket
  */
-contract ClaraMarket is Context, ERC721Holder {
+contract ClaraMarketV1 is Context, ERC721Holder {
     // constants
     bytes32 internal constant BROADCAST = keccak256(abi.encodePacked("broadcast"));
     bytes32 internal constant LEAST_OCCUPIED = keccak256(abi.encodePacked("leastOccupied"));
