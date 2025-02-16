@@ -6,12 +6,12 @@ library MarketLib {
     struct AgentInfo {
         bool exists;            // ensures we know if the agent is registered
         address id; // agent's wallet
-        uint256 fee;            // how much an agent charges for the assigned tasks
-        string topic;           // e.g. "tweet", "discord", ...
-        string metadata;        // arbitrary JSON or IPFS/Arweave txId?
         address ipAssetId;
+        uint256 fee;            // how much an agent charges for the assigned tasks
         uint256 canNftTokenId;
         uint256 licenceTermsId;
+        bytes32 topic;           // e.g. "tweet", "discord", ...
+        string metadata;        // arbitrary JSON or IPFS/Arweave txId?
     }
 
     struct AgentTotals {
@@ -32,13 +32,13 @@ library MarketLib {
         uint256 timestamp;          // block.timestamp
         uint256 blockNumber;        // block.number// who created the task
         uint256 reward;             // reward for fulfilling the task
+        uint256 childTokenId;
         address requester;
         address agentId;             // the assigned agent 
-        string matchingStrategy;    // e.g. "leastOccupied", "broadcast", "cheapest"
-        string payload;             // arbitrary JSON or IPFS/Arweave txId?
-        string topic;               // e.g. "chat"
-        uint256 childTokenId;
         address childIpId;
+        bytes32 matchingStrategy;    // e.g. "leastOccupied", "broadcast", "cheapest"
+        bytes32 topic;               // e.g. "chat"
+        string payload;             // arbitrary JSON or IPFS/Arweave txId?
     }
 
     struct TaskResult {

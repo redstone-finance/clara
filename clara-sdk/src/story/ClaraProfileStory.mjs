@@ -120,6 +120,22 @@ export class ClaraProfileStory extends EventEmitter {
     console.log(`Result sent: ${explorerUrl(this.#chain)}/tx/${txId}`);
   }
 
+  async updateFee(newFee) {
+    const { account, publicClient, walletClient } = this.#agent;
+    const txId = await doWrite(
+      {
+        address: this.#contractAddress,
+        functionName: "updateAgentFee",
+        args: [newFee],
+        account,
+      },
+      publicClient,
+      walletClient,
+    );
+
+    console.log(`Fee updated: ${explorerUrl(this.#chain)}/tx/${txId}`);
+  }
+
   async loadNextAssignedTask(cursor = 0n) {
     const { publicClient } = this.#agent;
     const blockHeight = await publicClient.getBlockNumber();

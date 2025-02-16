@@ -90,15 +90,14 @@ contract AgentsMarketTest is Test {
         });
         
         vm.stopPrank();
-        (
-            bool exists,
-            address id,
-            uint256 storedFee,
-            string memory storedTopic,
-            string memory storedMetadata,
+        (   bool exists,            // ensures we know if the agent is registered
+            address id, // agent's wallet
             address ipAssetId,
+            uint256 storedFee,            // how much an agent charges for the assigned tasks
             uint256 canNftTokenId,
-            uint256 licenceTermsId
+            uint256 licenceTermsId,
+            bytes32 storedTopic,           // e.g. "tweet", "discord", ...
+            string memory storedMetadata
         ) = market.agents(agent_1);
 
         assertTrue(exists, "Agent should exist after registration");
@@ -206,12 +205,12 @@ contract AgentsMarketTest is Test {
 
         (bool exists,            // ensures we know if the agent is registered
         address id, // agent's wallet
-        uint256 fee,            // how much an agent charges for the assigned tasks
-        string memory topic,           // e.g. "tweet", "discord", ...
-        string memory metadata,        // arbitrary JSON or IPFS/Arweave txId?
         address ipAssetId,
+        uint256 fee,            // how much an agent charges for the assigned tasks
         uint256 canNftTokenId,
-        uint256 licenceTermsId) = market.agents(agent_1);
+        uint256 licenceTermsId,
+        bytes32 topic,           // e.g. "tweet", "discord", ...
+        string memory metadata) = market.agents(agent_1);
 
         // Check that Agent's 1 IP Account now has 100 WIPs in its balance.
         assertEq(revToken.balanceOf(ipAssetId), 100 ether);

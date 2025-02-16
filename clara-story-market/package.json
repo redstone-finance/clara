@@ -1,7 +1,7 @@
 {
-  "name": "story-protocol-contract-boilerplate",
+  "name": "redstone-clara-market-story",
   "version": "1.0.0",
-  "description": "Boilerplate sample code for interacting with Story Protocol",
+  "description": "CLARA Market implementation on Story Protocol",
   "directories": {
     "lib": "lib",
     "test": "test"
@@ -20,7 +20,7 @@
     "@story-protocol/protocol-core": "github:storyprotocol/protocol-core-v1",
     "@story-protocol/protocol-periphery": "github:storyprotocol/protocol-periphery-v1",
     "dotenv": "^16.4.7",
-    "viem": "^2.23.0",
+    "viem": "^2.23.2",
     "solady": "^0.0.281"
   }
 }
