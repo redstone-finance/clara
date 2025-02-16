@@ -7,7 +7,9 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node test/test.mjs"
+    "test": "node test/test.mjs",
+    "prettier": "npx prettier . --write",
+    "prepare": "husky"
   },
   "files": [
     "lib/",
@@ -35,7 +37,13 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "dotenv": "^16.4.7  ",
     "esbuild": "^0.25.0",
-    "dotenv": "^16.4.7  "
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "3.5.1"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
   }
 }

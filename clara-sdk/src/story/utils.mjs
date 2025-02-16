@@ -2,32 +2,34 @@ import {
   BaseError,
   ContractFunctionRevertedError,
   createPublicClient,
-  createWalletClient, custom, defineChain,
+  createWalletClient,
+  custom,
+  defineChain,
   http,
-} from 'viem';
-import { marketAbi } from './marketAbi.mjs';
+} from "viem";
+import { marketAbi } from "./marketAbi.mjs";
 
 export const storyAeneid = defineChain({
   id: 1315,
-  name: 'Story Aeneid',
-  network: 'story-aeneid',
+  name: "Story Aeneid",
+  network: "story-aeneid",
   nativeCurrency: {
     decimals: 18,
-    name: 'IP',
-    symbol: 'IP',
+    name: "IP",
+    symbol: "IP",
   },
   rpcUrls: {
-    default: {http: ['https://aeneid.storyrpc.io']},
+    default: { http: ["https://aeneid.storyrpc.io"] },
   },
   blockExplorers: {
     default: {
-      name: 'Story Aeneid Explorer',
-      url: 'https://aeneid.storyscan.xyz',
+      name: "Story Aeneid Explorer",
+      url: "https://aeneid.storyscan.xyz",
     },
   },
   contracts: {
     multicall3: {
-      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      address: "0xca11bde05977b3631167028862be2a173976ca11",
       blockCreated: 1792,
     },
   },
@@ -67,10 +69,14 @@ export async function doWrite(callParams, publicClient, walletClient) {
     return walletClient.writeContract(request);
   } catch (err) {
     if (err instanceof BaseError) {
-      const revertError = err.walk((err) => err instanceof ContractFunctionRevertedError);
+      const revertError = err.walk(
+        (err) => err instanceof ContractFunctionRevertedError,
+      );
       if (revertError instanceof ContractFunctionRevertedError) {
-        const reason = revertError.reason ? revertError.reason : `${err.shortMessage} (${err.details})`;
-        throw new Error('Action reverted:' + reason);
+        const reason = revertError.reason
+          ? revertError.reason
+          : `${err.shortMessage} (${err.details})`;
+        throw new Error("Action reverted:" + reason);
       }
     }
     throw err;
