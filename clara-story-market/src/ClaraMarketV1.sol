@@ -15,7 +15,7 @@ import { RoyaltyPolicyLAP } from "@storyprotocol/core/modules/royalty/policies/L
 
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {MarketLib} from "./MarketLib.sol";
-import {console} from "forge-std/console.sol";
+// import {console} from "forge-std/console.sol";
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 /**
@@ -23,11 +23,14 @@ import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721H
  */
 contract ClaraMarketV1 is Context, ERC721Holder {
     // constants
-    bytes32 internal constant BROADCAST = keccak256(abi.encodePacked("broadcast"));
-    bytes32 internal constant LEAST_OCCUPIED = keccak256(abi.encodePacked("leastOccupied"));
-    bytes32 internal constant CHEAPEST = keccak256(abi.encodePacked("cheapest"));
-    bytes32 internal constant CHAT_TOPIC = keccak256(abi.encodePacked("chat"));
-    bytes32 internal constant NONE_TOPIC = keccak256(abi.encodePacked("none"));
+    bytes32 internal constant BROADCAST = "broadcast";
+    bytes32 internal constant LEAST_OCCUPIED = "leastOccupied";
+    bytes32 internal constant CHEAPEST = "cheapest";
+    bytes32 internal constant CHAT_TOPIC = "chat";
+    bytes32 internal constant NONE_TOPIC = "none";
+
+    // viem.keccak256(toHex("RedStone.ClaraMarket.Storage"))
+    bytes32 private constant STORAGE_LOCATION = 0x662d955f31e0cda1ca2e8148a249b0c86a4293138bfb4d882e692ec1f9dabd24;
 
     // public
     MarketLib.MarketTotals public marketTotals;
@@ -48,32 +51,27 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     AgentNFT public immutable AGENT_NFT;
     
     // internal
-    mapping(string => bool) internal topics;
-    mapping(string => bool) internal matchingStrategies;
+    mapping(bytes32 => bool) internal topics;
+    mapping(bytes32 => bool) internal matchingStrategies;
 
     // private
     uint256 public tasksCounter;
 
     // events
     event RegisteredAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
+    event UpdatedAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
     event TaskAssigned(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.Task task);
     event TaskResultSent(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.TaskResult taskResult);
 
     constructor(
-    // "IPAssetRegistry": "0x77319B4031e6eF1250907aa00018B8B1c67a244b",
         address ipAssetRegistry,
-    // "LicensingModule": "0x04fbd8a2e56dd85CFD5500A4A4DfA955B9f1dE6f",
         address licensingModule,
-    // "PILicenseTemplate": "0x2E896b0b2Fdb7457499B56AAaA4AE55BCB4Cd316",
         address pilTemplate,
-    // "RoyaltyPolicyLAP": "0xBe54FB168b3c982b7AaE60dB6CF75Bd8447b390E",
         address royaltyPolicyLAP,
-    // "RoyaltyWorkflows": "0x9515faE61E0c0447C6AC6dEe5628A2097aFE1890",
         address royaltyWorkflows,
-    //  "RoyaltyModule": "0xD2f60c40fEbccf6311f8B47c4f2Ec6b040400086",
         address royaltyModule,
-    // "WIP": "0x1514000000000000000000000000000000000000"
         address payable _revenueToken) {
+        
         require(_revenueToken != address(0), "Invalid token address");
         REVENUE_TOKEN = RevenueToken(_revenueToken);
         IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
@@ -99,28 +97,20 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); // not sure if CAIN is the best symbol :)
     }
 
-    function _assertTopic(string memory _topic) internal view {
-        require(topics[_topic], "Unknown topic");
-    }
-
-    function _assertMatchingStrategy(string memory _matchingStrategy) internal view {
-        require(matchingStrategies[_matchingStrategy], "Unknown matching strategy");
-    }
-
-    function _assertAgentRegistered() internal view {
-        require(agents[_msgSender()].exists, "Agent not registered");
+    function getPaymentsAddr() external view returns (address) {
+        return address(REVENUE_TOKEN);
     }
 
     function registerAgentProfile(
         uint256 _fee,
-        string calldata _topic,
+        bytes32 _topic,
         string calldata _metadata
     )
     external
     {
+        require(agents[_msgSender()].exists == false, "Agent already registered");
         _assertTopic(_topic);
         require(_fee >= 0, "Fee cannot be negative");
-        require(agents[_msgSender()].exists == false, "Agent already registered");
 
         uint256 tokenId = AGENT_NFT.mint(address(this));
         address ipId = IP_ASSET_REGISTRY.register(block.chainid, address(AGENT_NFT), tokenId);
@@ -153,11 +143,22 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         emit RegisteredAgent(_msgSender(), agents[_msgSender()]);
     }
 
+    function updateAgentFee(uint256 _fee)
+    external
+    {
+        require(agents[_msgSender()].exists == true, "Agent not registered");
+        require(_fee >= 0, "Fee cannot be negative");
+
+        agents[_msgSender()].fee = _fee;
+    
+        emit UpdatedAgent(_msgSender(), agents[_msgSender()]);
+    }
+
     function registerTask(
         uint256 _reward,
         uint256 _contextId,
-        string calldata _topic,
-        string calldata _matchingStrategy,
+        bytes32 _topic,
+        bytes32 _matchingStrategy,
         string calldata _payload
     )
     external
@@ -242,17 +243,15 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     }
 
     function _dispatchTasksInternal(MarketLib.Task memory _task) internal {
-        bytes32 strategy = keccak256(abi.encodePacked(_task.matchingStrategy));
-
-        if (strategy == BROADCAST) {
+        if (_task.matchingStrategy == BROADCAST) {
             // broadcast strategy => assign to all matching agents
-            console.log("broadcast");
+            // console.log("broadcast");
             address[] memory matchedAgents = _matchBroadcast(
                 _task.reward,
                 _task.requester,
                 _task.topic
             );
-            console.log(matchedAgents.length);
+            // console.log(matchedAgents.length);
             require(matchedAgents.length > 0, "Could not match any agents for broadcast mode");
             uint256 rewardLeft = _task.reward;
         
@@ -266,12 +265,12 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                     return;
                 }
             }
-        } else if (strategy == LEAST_OCCUPIED) {
+        } else if (_task.matchingStrategy == LEAST_OCCUPIED) {
             address chosen = _matchLeastOccupied(_task.reward, _task.requester, _task.topic);
             require(chosen != address(0), "Could not match agent for least occupied mode");
             uint256 agentFee = agents[chosen].fee;
             _storeAndSendTask(chosen, _task, agentFee);
-        } else if (strategy == CHEAPEST) {
+        } else if (_task.matchingStrategy == CHEAPEST) {
             address cheapest = _matchCheapest(_task.reward, _task.requester, _task.topic);
             require(cheapest != address(0), "Could not match agent for cheapest mode");
             uint256 agentFee = agents[cheapest].fee;
@@ -284,7 +283,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         MarketLib.Task memory originalTask,
         uint256 agentFee
     ) internal {
-        console.log("_storeAndSendTask");
+        // console.log("_storeAndSendTask");
         originalTask.reward = agentFee;
         originalTask.agentId = _agentId;
 
@@ -308,11 +307,11 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         address childIpId = IP_ASSET_REGISTRY.register(block.chainid, address(AGENT_NFT), childTokenId);
 
         // mint a license token from the parent
-        console.log("mintLicenseTokens");
+        /*console.log("mintLicenseTokens");
         console.log(address(this));
         console.log("ipAssetId", agents[_agentId].ipAssetId);
         console.log("pilTemplate", address(PIL_TEMPLATE));
-        console.log("licenceTermsId", agents[_agentId].licenceTermsId);
+        console.log("licenceTermsId", agents[_agentId].licenceTermsId);*/
         
         uint256 licenseTokenId = LICENSING_MODULE.mintLicenseTokens({
             licensorIpId: agents[_agentId].ipAssetId,
@@ -326,7 +325,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             maxMintingFee: 0,
             maxRevenueShare: 0
         });
-        console.log("after mintLicenseTokens");
+        // console.log("after mintLicenseTokens");
 
         uint256[] memory licenseTokenIds = new uint256[](1);
         licenseTokenIds[0] = licenseTokenId;
@@ -343,10 +342,10 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         finalTask.childTokenId = childTokenId;
 
         // transfer the NFT to the receiver so it owns the child IPA
-        console.log("Before transfer");
-        console.log(_agentId);
+        // console.log("Before transfer");
+        // console.log(_agentId);
         AGENT_NFT.transferFrom(address(this), _agentId, childTokenId);
-        console.log("after transfer");
+        // console.log("after transfer");
         
         agentInbox[_agentId][finalTask.id] = finalTask;
         agentTotals[_agentId].assigned += 1;
@@ -357,30 +356,27 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     function _filterAgentsWithTopicAndFee(
         uint256 _reward,
         address _requesterId,
-        string memory _topic
+        bytes32 _topic
     ) internal view returns (address[] memory) {
         address[] memory temp = new address[](allAgents.length);
         uint256 count = 0;
-        console.log("All agents length", allAgents.length);
-
-        bytes32 topic = keccak256(abi.encodePacked(_topic));
+        // console.log("All agents length", allAgents.length);
 
         for (uint256 i = 0; i < allAgents.length; i++) {
-            console.log("checking agent");
+            // console.log("checking agent");
             address id_ = allAgents[i];
             MarketLib.AgentInfo memory agentInfo = agents[id_];
 
-            bytes32 agentTopic = keccak256(abi.encodePacked(agentInfo.topic));
             if (!agentInfo.exists) {
                 continue;
             }
             
-            if (agentTopic == NONE_TOPIC) {
+            if (agentInfo.topic == NONE_TOPIC) {
                 continue;
             }
 
             // topic must match
-            if (agentTopic != topic) {
+            if (agentInfo.topic != _topic) {
                 continue;
             }
 
@@ -407,7 +403,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     function _matchBroadcast(
         uint256 _reward,
         address _requesterId,
-        string memory _topic
+        bytes32 _topic
     ) internal view returns (address[] memory) {
         return _filterAgentsWithTopicAndFee(_reward, _requesterId, _topic);
     }
@@ -415,7 +411,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     function _matchLeastOccupied(
         uint256 _reward,
         address _requesterId,
-        string memory _topic
+        bytes32 _topic
     ) internal view returns (address) {
         address[] memory candidates = _filterAgentsWithTopicAndFee(_reward, _requesterId, _topic);
         if (candidates.length == 0) {
@@ -438,7 +434,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     function _matchCheapest(
         uint256 _reward,
         address _requesterId,
-        string memory _topic
+        bytes32 _topic
     ) internal view returns (address) {
         address[] memory candidates = _filterAgentsWithTopicAndFee(_reward, _requesterId, _topic);
         if (candidates.length == 0) {
@@ -481,8 +477,16 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         }
     }
 
-    function getPaymentsAddr() external view returns (address) {
-        return address(REVENUE_TOKEN);
+    function _assertTopic(bytes32 _topic) internal view {
+        require(topics[_topic], "Unknown topic");
+    }
+
+    function _assertMatchingStrategy(bytes32 _matchingStrategy) internal view {
+        require(matchingStrategies[_matchingStrategy], "Unknown matching strategy");
+    }
+
+    function _assertAgentRegistered() internal view {
+        require(agents[_msgSender()].exists, "Agent not registered");
     }
 
 }
