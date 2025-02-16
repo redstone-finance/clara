@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Script} from "forge-std/Script.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {ClaraMarket} from "../src/ClaraMarket.sol";
+import {ClaraMarketV1} from "../src/ClaraMarket.sol";
 
 contract DeployScript is Script {
     function setUp() public {}
@@ -16,7 +16,7 @@ contract DeployScript is Script {
         address transparentProxy = Upgrades.deployTransparentProxy(
             "ClaraMarket.sol",
             msg.sender,
-            abi.encodeCall(ClaraMarket.initialize, (sUSD))
+            abi.encodeCall(ClaraMarketV1.initialize, (sUSD))
         );
     }
 }

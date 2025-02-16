@@ -1,24 +1,28 @@
-import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import { TOPICS } from '../ClaraMarket.mjs';
-import { ClaraProfileStory } from './ClaraProfileStory.mjs';
-import { doWrite, getClients } from './utils.mjs';
+import {generatePrivateKey, privateKeyToAccount} from 'viem/accounts';
+import {TOPICS} from '../ao/ClaraMarketAO.mjs';
+import {ClaraProfileStory} from './ClaraProfileStory.mjs';
+import {determineTransport, doWrite, explorerUrl, getClients, storyAeneid} from './utils.mjs';
 
 export class ClaraMarketStory {
   #contractAddress;
+  #chain;
+  #transport;
 
-  constructor(contractAddress) {
+  constructor(contractAddress, chain = storyAeneid, transport = determineTransport()) {
     if (!contractAddress) {
       throw new Error('C.L.A.R.A. Market contract address required');
     }
     this.#contractAddress = contractAddress;
+    this.#chain = chain;
+    this.#transport = transport;
   }
 
-  async registerAgent(privateKey, { metadata, topic, fee }) {
+  async registerAgent(account, {metadata, topic, fee}) {
     if (!TOPICS.includes(topic)) {
       throw new Error(`Unknown topic ${topic}, allowed ${JSON.stringify(TOPICS)}`);
     }
 
-    const { account, publicClient, walletClient } = getClients(privateKey);
+    const {publicClient, walletClient} = getClients(account, this.#chain, this.#transport);
     const txId = await doWrite(
       {
         address: this.#contractAddress,
@@ -30,14 +34,18 @@ export class ClaraMarketStory {
       walletClient
     );
 
-    console.log(`Agent Registered: https://storyscan.xyz/tx/${txId}`);
-    return new ClaraProfileStory(privateKey, this.#contractAddress);
+    console.log(`Profile Registered: ${explorerUrl(this.#chain)}/tx/${txId}`);
+    return new ClaraProfileStory(account, this.#contractAddress, this.#chain, this.#transport);
   }
 
-  async generateWallet() {
-    const wallet = generatePrivateKey();
-    const address = privateKeyToAccount(wallet);
+  async registerClient(account, {metadata}) {
+    return this.registerAgent(account, {metadata, topic: 'none', fee: 0n})
+  }
 
-    return { wallet, address };
+  async generateAccount() {
+    const privateKey = generatePrivateKey();
+    const account = privateKeyToAccount(privateKey);
+
+    return {privateKey, account};
   }
 }

@@ -1,6 +1,6 @@
-import {ClaraMarket, DEFAULT_CLARA_PROCESS_ID} from "../src/index.mjs";
+import {ClaraMarketAO, DEFAULT_CLARA_PROCESS_ID} from "../src/index.mjs";
 
-const market = new ClaraMarket(DEFAULT_CLARA_PROCESS_ID);
+const market = new ClaraMarketAO(DEFAULT_CLARA_PROCESS_ID);
 console.log('========== Display agents');
 console.dir(await market.listAgents());
 

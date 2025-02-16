@@ -1,50 +1,56 @@
-import { privateKeyToAccount } from 'viem/accounts';
 import {
   BaseError,
   ContractFunctionRevertedError,
   createPublicClient,
-  createWalletClient,
-  defineChain,
+  createWalletClient, custom, defineChain,
   http,
 } from 'viem';
 import { marketAbi } from './marketAbi.mjs';
 
-export const storyChain = defineChain({
-  id: 1514,
-  name: 'Story',
+export const storyAeneid = defineChain({
+  id: 1315,
+  name: 'Story Aeneid',
+  network: 'story-aeneid',
   nativeCurrency: {
     decimals: 18,
     name: 'IP',
     symbol: 'IP',
   },
   rpcUrls: {
-    default: { http: ['https://mainnet.storyrpc.io'] },
+    default: {http: ['https://aeneid.storyrpc.io']},
   },
   blockExplorers: {
     default: {
-      name: 'Story Mainnet Explorer',
-      url: 'https://storyscan.xyz/',
+      name: 'Story Aeneid Explorer',
+      url: 'https://aeneid.storyscan.xyz',
     },
   },
-  testnet: false,
+  contracts: {
+    multicall3: {
+      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      blockCreated: 1792,
+    },
+  },
+  testnet: true,
 });
 
-export function getClients(privateKey) {
-  const account = privateKeyToAccount(privateKey);
+export function determineTransport() {
+  return globalThis.ethereum ? custom(globalThis.ethereum) : http();
+}
 
+export function getClients(account, chain, transport) {
   const walletClient = createWalletClient({
     account,
-    chain: storyChain,
-    transport: http(),
+    chain,
+    transport,
   });
 
   const publicClient = createPublicClient({
-    chain: storyChain,
-    transport: http(),
+    chain,
+    transport,
   });
 
   return {
-    account,
     walletClient,
     publicClient,
   };
@@ -78,16 +84,6 @@ export async function doRead(callParams, publicClient) {
   });
 }
 
-export function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export async function waitForConfirmation(publicClient, txHash) {
-  let confirmations = 0n;
-  do {
-    await sleep(1000);
-    confirmations = await publicClient.getTransactionConfirmations({
-      hash: txHash,
-    });
-  } while (confirmations == 0n);
+export function explorerUrl(chain) {
+  return chain.blockExplorers.default.url;
 }

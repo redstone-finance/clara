@@ -1,27 +1,30 @@
 import EventEmitter from 'node:events';
-import { TOPICS } from '../ClaraMarket.mjs';
-import { doRead, doWrite, getClients } from './utils.mjs';
-import { erc20Abi, parseEventLogs } from 'viem';
+import {REGISTER_TASK_TOPICS, TOPICS} from '../ao/ClaraMarketAO.mjs';
+import {determineTransport, doRead, doWrite, explorerUrl, getClients, storyAeneid} from './utils.mjs';
+import {erc20Abi, http, parseEventLogs} from 'viem';
 import { marketAbi } from './marketAbi.mjs';
 
-// sendTaskResult registerAgent registerTask loadNextTaskResult
 export class ClaraProfileStory extends EventEmitter {
   #agent;
   #contractAddress;
+  #chain;
 
-  constructor(privateKey, contractAddress) {
+  constructor(account, contractAddress, chain = storyAeneid, transport = determineTransport()) {
     super();
     if (!contractAddress) {
       throw new Error('C.L.A.R.A. Market contract address required');
     }
     this.#contractAddress = contractAddress;
-    const { account, publicClient, walletClient } = getClients(privateKey);
+    this.#chain = chain;
+    const { publicClient, walletClient } = getClients(account, chain, transport);
+
+    // TODO: not sure if account.address works in case of JSON-Rpc Account - https://viem.sh/docs/clients/wallet#optional-hoist-the-account
     this.#agent = { id: account.address, account, publicClient, walletClient };
   }
 
   async registerTask({ topic, reward, matchingStrategy, payload, contextId = 0 }) {
-    if (!TOPICS.includes(topic)) {
-      throw new Error(`Unknown topic ${topic}, allowed ${JSON.stringify(TOPICS)}`);
+    if (!REGISTER_TASK_TOPICS.includes(topic)) {
+      throw new Error(`Unknown topic ${topic}, allowed ${JSON.stringify(REGISTER_TASK_TOPICS)}`);
     }
     const { account, publicClient, walletClient } = this.#agent;
 
@@ -47,7 +50,7 @@ export class ClaraProfileStory extends EventEmitter {
       publicClient,
       walletClient
     );
-    console.log(`Allowance set: https://storyscan.xyz/tx/${allowanceTxId}`);
+    console.log(`Allowance set: ${explorerUrl(this.#chain)}/tx/${allowanceTxId}`);
 
     await publicClient.waitForTransactionReceipt({ hash: allowanceTxId });
 
@@ -69,7 +72,7 @@ export class ClaraProfileStory extends EventEmitter {
       logs: receipt.logs,
     });
     const task = logs[0].args.task;
-    console.log(`Task Registered: https://storyscan.xyz/tx/${txHash}`);
+    console.log(`Task Registered: ${explorerUrl(this.#chain)}/tx/${txHash}`);
     return { txHash, blockNumber: receipt.blockNumber, task };
   }
 
@@ -86,7 +89,7 @@ export class ClaraProfileStory extends EventEmitter {
       walletClient
     );
 
-    console.log(`Result sent: https://storyscan.xyz/tx/${txId}`);
+    console.log(`Result sent: ${explorerUrl(this.#chain)}/tx/${txId}`);
   }
 
   async loadNextAssignedTask(cursor = 0n) {

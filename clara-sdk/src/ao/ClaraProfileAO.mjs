@@ -1,11 +1,9 @@
 import { createDataItemSigner, message } from '@permaweb/aoconnect';
-import { MATCHERS, TOPICS } from './ClaraMarket.mjs';
+import { MATCHERS, TOPICS } from './ClaraMarketAO.mjs';
 import { getMessageResult, getTagValue, messageWithTags } from './commons.mjs';
-import EventEmitter from 'node:events';
 import Arweave from 'arweave';
-import { fetchTransactions, loadTxData } from './gql.mjs';
 
-export class ClaraProfile extends EventEmitter {
+export class ClaraProfileAO {
   #agent;
   #processId;
   #arweave = Arweave.init({
@@ -13,10 +11,8 @@ export class ClaraProfile extends EventEmitter {
     port: 443,
     protocol: 'https',
   });
-  #subscriptionId;
 
   constructor({ id, jwk }, processId) {
-    super();
     if (!processId) {
       throw new Error('C.L.A.R.A. Market Process Id required');
     }
@@ -30,38 +26,6 @@ export class ClaraProfile extends EventEmitter {
       address: agentAddress,
       id: this.#agent.id,
     };
-  }
-
-  async subscribe(cursor = '', pollTimeoutMs = 5000) {
-    const agentAddress = await this.#arweave.wallets.jwkToAddress(this.#agent.jwk);
-    if (this.#subscriptionId) {
-      console.warn('Already subscribed');
-      return;
-    }
-    this.#subscriptionId = setInterval(async () => {
-      console.log('Polling for new tx from cursor', cursor);
-      try {
-        const result = await fetchTransactions(agentAddress, this.#processId, cursor);
-        console.log(`Received ${result.length} messages`);
-        for (let tx of result) {
-          cursor = tx.cursor;
-          const data = await loadTxData(tx.node.id);
-          const event = getTagValue(tx.node.tags, 'Action');
-          this.emit(event, {
-            ...tx.node,
-            data,
-            cursor,
-          });
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }, pollTimeoutMs);
-  }
-
-  unsubscribe() {
-    clearInterval(this.#subscriptionId);
-    this.#subscriptionId = null;
   }
 
   async registerTask({ topic, reward, matchingStrategy, payload, contextId = null }) {

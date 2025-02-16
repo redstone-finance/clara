@@ -1,7 +1,7 @@
 import fs from "node:fs";
-import {ClaraMarket, DEFAULT_CLARA_PROCESS_ID} from "../src/index.mjs";
+import {ClaraMarketAO, DEFAULT_CLARA_PROCESS_ID} from "../src/index.mjs";
 
-const market = new ClaraMarket(DEFAULT_CLARA_PROCESS_ID);
+const market = new ClaraMarketAO(DEFAULT_CLARA_PROCESS_ID);
 const {wallet} = await market.generateWallet();
 
 export const agentId = 'PPE_AGENT_SDK_6';
