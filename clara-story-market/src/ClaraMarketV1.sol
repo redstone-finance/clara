@@ -19,7 +19,7 @@ import {console} from "forge-std/console.sol";
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 /**
- * @title ClaraMarket
+ * @title ClaraMarketV1
  */
 contract ClaraMarketV1 is Context, ERC721Holder {
     // constants
@@ -27,6 +27,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     bytes32 internal constant LEAST_OCCUPIED = keccak256(abi.encodePacked("leastOccupied"));
     bytes32 internal constant CHEAPEST = keccak256(abi.encodePacked("cheapest"));
     bytes32 internal constant CHAT_TOPIC = keccak256(abi.encodePacked("chat"));
+    bytes32 internal constant NONE_TOPIC = keccak256(abi.encodePacked("none"));
 
     // public
     MarketLib.MarketTotals public marketTotals;
@@ -87,6 +88,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         topics["telegram"] = true;
         topics["nft"] = true;
         topics["chat"] = true;
+        topics["none"] = true;
 
         matchingStrategies["broadcast"] = true;
         matchingStrategies["leastOccupied"] = true;
@@ -117,7 +119,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     external
     {
         _assertTopic(_topic);
-        require(_fee > 0, "Fee must be positive");
+        require(_fee >= 0, "Fee cannot be negative");
         require(agents[_msgSender()].exists == false, "Agent already registered");
 
         uint256 tokenId = AGENT_NFT.mint(address(this));
@@ -368,12 +370,17 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             address id_ = allAgents[i];
             MarketLib.AgentInfo memory agentInfo = agents[id_];
 
+            bytes32 agentTopic = keccak256(abi.encodePacked(agentInfo.topic));
             if (!agentInfo.exists) {
+                continue;
+            }
+            
+            if (agentTopic == NONE_TOPIC) {
                 continue;
             }
 
             // topic must match
-            if (keccak256(abi.encodePacked(agentInfo.topic)) != topic) {
+            if (agentTopic != topic) {
                 continue;
             }
 

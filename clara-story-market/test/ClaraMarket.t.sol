@@ -63,7 +63,7 @@ contract AgentsMarketTest is Test {
         vm.stopPrank();
 
         // 3. Deploy the ClaraMarket contract
-        market = new ClaraMarket(
+        market = new ClaraMarketV1(
             ipAssetRegistry,
             licensingModule,
             pilTemplate,
