@@ -1,9 +1,12 @@
 import "dotenv/config";
-import { parseEther } from "viem";
+import {createPublicClient, http, pad, parseEther, stringToHex} from "viem";
 import { ClaraMarketStory, ClaraProfileStory } from "../src/index.mjs";
 import { privateKeyToAccount } from "viem/accounts";
+import {storyAeneid} from "../src/story/utils.mjs";
 
-const contractAddr = "0x04C28E246Dc2E9244D93f4e32f12E45f0B21e3a4";
+console.log(stringToHex("chat", {size: 32}));
+
+const contractAddr = "0xF112A8EB80b60fbC58f84817A2D74641aD793C64";
 const account_1 = privateKeyToAccount(process.env.PRIVATE_KEY_1);
 const account_2 = privateKeyToAccount(process.env.PRIVATE_KEY_2);
 
@@ -33,9 +36,15 @@ console.log(result);
 
 const claraProfile = new ClaraProfileStory(account_2, contractAddr);
 console.log("Agent 2 sends result");
-await claraProfile.sendTaskResult({
+const txHash = await claraProfile.sendTaskResult({
   taskId: 1,
   result: "jobs done",
 });
+
+const publicClient = createPublicClient({
+  chain: storyAeneid,
+  transport: http()
+});
+await publicClient.waitForTransactionReceipt({ hash: txHash })
 const result2 = await agentProfile_1.loadNextTaskResult(662854n);
 console.log(result2);
