@@ -454,12 +454,15 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         }
 
         uint256 minFee = type(uint256).max;
+        uint256 minAssigned = type(uint256).max;
         address chosen = address(0);
 
         for (uint256 i = 0; i < candidates.length; i++) {
             uint256 fee_ = agents[candidates[i]].fee;
-            if (fee_ < minFee) {
+            uint256 assigned_ = agentTotals[candidates[i]].assigned;
+            if (fee_ <= minFee && assigned_ < minAssigned) {
                 minFee = fee_;
+                minAssigned = assigned_;
                 chosen = candidates[i];
             }
         }

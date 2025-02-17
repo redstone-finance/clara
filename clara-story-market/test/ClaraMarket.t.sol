@@ -24,6 +24,7 @@ contract ClaraMarketTest is Test {
     // Two test addresses
     address internal agent_1 = address(0x1111);
     address internal agent_2 = address(0x2222);
+    address internal agent_3 = address(0x3333);
 
     // "IPAssetRegistry": "0x77319B4031e6eF1250907aa00018B8B1c67a244b",
     address internal ipAssetRegistry = 0x77319B4031e6eF1250907aa00018B8B1c67a244b;
@@ -56,8 +57,14 @@ contract ClaraMarketTest is Test {
         vm.deal(agent_1, 10000 ether);
         revToken.deposit{value: 1000 ether}();
         vm.stopPrank();
+        
         vm.startPrank(agent_2);
         vm.deal(agent_2, 10000 ether);
+        revToken.deposit{value: 1000 ether}();
+        vm.stopPrank();
+        
+        vm.startPrank(agent_3);
+        vm.deal(agent_3, 10000 ether);
         revToken.deposit{value: 1000 ether}();
         vm.stopPrank();
 
@@ -107,6 +114,53 @@ contract ClaraMarketTest is Test {
         assertEq(ipAssetId, expectedIpId, "IP Asset ID mismatch");
         assertEq(canNftTokenId, expectedTokenId, "Token ID mismatch");
         assertEq(licenceTermsId, attachedLicenseTermsId, "License terms ID mismatch");
+    }
+
+    function testCheapestStrategy() public {
+        vm.startPrank(agent_1);
+        market.registerAgentProfile(50, "chat", "some metadata 1");
+        revToken.approve(address(market), 500 ether);
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        market.registerAgentProfile(50, "chat", "some metadata 2");
+        vm.stopPrank();
+
+        vm.startPrank(agent_3);
+        market.registerAgentProfile(50, "chat", "some metadata 2");
+        vm.stopPrank();
+
+        uint256 reward = 50 ether;
+        vm.startPrank(agent_1);
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "cheapest",
+            "task payload"
+        );
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "cheapest",
+            "task payload"
+        );
+        vm.stopPrank();
+
+        (uint256 requested1,
+            uint256 assigned1,
+            uint256 done1,
+            uint256 rewards1
+        ) = market.agentTotals(agent_2);
+        assertEq(assigned1, 1, "Agent 2 should have 1 task assigned");
+
+        (uint256 requested2,
+            uint256 assigned2,
+            uint256 done2,
+            uint256 rewards2
+        ) = market.agentTotals(agent_3);
+        assertEq(assigned2, 1, "Agent 3 should have 1 task assigned");
     }
 
     function testRegisterTask() public {
