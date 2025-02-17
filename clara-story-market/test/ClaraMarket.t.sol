@@ -15,9 +15,8 @@ import { MockIPGraph } from "@storyprotocol/test/mocks/MockIPGraph.sol";
 import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.sol";
 import { LicenseRegistry } from "@storyprotocol/core/registries/LicenseRegistry.sol";
 
-
 // TODO: Update to IP Asset version
-contract AgentsMarketTest is Test {
+contract ClaraMarketTest is Test {
     RevenueToken internal revToken;
     ClaraMarketV1 internal market;
     AgentNFT internal agentNft;

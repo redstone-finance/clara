@@ -8,6 +8,7 @@ import {
   getClients,
   storyAeneid,
 } from "./utils.mjs";
+import {pad, stringToBytes, stringToHex} from "viem";
 
 export class ClaraMarketStory {
   #contractAddress;
@@ -39,11 +40,12 @@ export class ClaraMarketStory {
       this.#chain,
       this.#transport,
     );
+
     const txId = await doWrite(
       {
         address: this.#contractAddress,
         functionName: "registerAgentProfile",
-        args: [fee, topic, metadata],
+        args: [fee, stringToHex(topic, {size: 32}), metadata],
         account,
       },
       publicClient,
