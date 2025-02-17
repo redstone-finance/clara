@@ -26,7 +26,6 @@ error TaskNotFound(uint256 taskId);
 error FeeNegative();
 error NoAgentsMatchedForTask();
 
-
 /**
  * @title ClaraMarketV1
  */
