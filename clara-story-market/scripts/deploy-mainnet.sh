@@ -12,7 +12,7 @@ forge create \
   --broadcast \
   --rpc-url https://mainnet.storyrpc.io/ \
   --private-key $PRIVATE_KEY \
-  ./src/ClaraMarket.sol:ClaraMarket \
+  ./src/ClaraMarketV1.sol:ClaraMarketV1 \
   --verify \
   --verifier blockscout \
   --verifier-url https://storyscan.xyz/api/ \
