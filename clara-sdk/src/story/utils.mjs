@@ -9,6 +9,29 @@ import {
 } from "viem";
 import { marketAbi } from "./marketAbi.mjs";
 
+// TODO: replace with a definition from viem, when the fix https://github.com/wevm/viem/commit/559d962abec866c4026e71a914049e02849549fb
+// will be released
+export const storyMainnet = defineChain({
+  id: 1514,
+  name: 'Story',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'IP Token',
+    symbol: 'IP',
+  },
+  rpcUrls: {
+    default: { http: ['https://mainnet.storyrpc.io'] },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Story explorer',
+      url: 'https://storyscan.xyz',
+      apiUrl: 'https://storyscan.xyz/api/v2',
+    },
+  },
+  testnet: false,
+})
+
 export const storyAeneid = defineChain({
   id: 1315,
   name: "Story Aeneid",

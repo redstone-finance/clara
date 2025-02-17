@@ -8,7 +8,7 @@ import {
   getClients,
   storyAeneid,
 } from "./utils.mjs";
-import {pad, stringToBytes, stringToHex} from "viem";
+import {stringToHex} from "viem";
 
 export class ClaraMarketStory {
   #contractAddress;
