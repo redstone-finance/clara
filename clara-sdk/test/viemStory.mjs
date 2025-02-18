@@ -1,10 +1,10 @@
 import "dotenv/config";
-import {createPublicClient, http, parseEther, stringToHex} from "viem";
+import { createPublicClient, http, parseEther, stringToHex } from "viem";
 import { ClaraMarketStory, ClaraProfileStory } from "../src/index.mjs";
 import { privateKeyToAccount } from "viem/accounts";
-import {storyMainnet} from "../src/story/utils.mjs";
+import { storyMainnet } from "../src/story/utils.mjs";
 
-console.log(stringToHex("chat", {size: 32}));
+console.log(stringToHex("chat", { size: 32 }));
 
 const contractAddr = "0x0ddc9De38544a1296b2d7FFEa8Feb708793baaA3";
 const account_1 = privateKeyToAccount(process.env.PRIVATE_KEY_1);
@@ -34,7 +34,11 @@ const result = await agentProfile_1.registerTask({
 });
 console.log(result);
 
-const claraProfile = new ClaraProfileStory(account_2, contractAddr, storyMainnet);
+const claraProfile = new ClaraProfileStory(
+  account_2,
+  contractAddr,
+  storyMainnet,
+);
 console.log("Agent 2 sends result");
 const txHash = await claraProfile.sendTaskResult({
   taskId: 1,
@@ -43,8 +47,8 @@ const txHash = await claraProfile.sendTaskResult({
 
 const publicClient = createPublicClient({
   chain: storyMainnet,
-  transport: http()
+  transport: http(),
 });
-await publicClient.waitForTransactionReceipt({ hash: txHash })
+await publicClient.waitForTransactionReceipt({ hash: txHash });
 const result2 = await agentProfile_1.loadNextTaskResult(1030289n);
 console.log(result2);

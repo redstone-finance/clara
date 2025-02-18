@@ -8,7 +8,7 @@ import {
   getClients,
   storyAeneid,
 } from "./utils.mjs";
-import {stringToHex} from "viem";
+import { stringToHex } from "viem";
 
 export class ClaraMarketStory {
   #contractAddress;
@@ -45,7 +45,7 @@ export class ClaraMarketStory {
       {
         address: this.#contractAddress,
         functionName: "registerAgentProfile",
-        args: [fee, stringToHex(topic, {size: 32}), metadata],
+        args: [fee, stringToHex(topic, { size: 32 }), metadata],
         account,
       },
       publicClient,
