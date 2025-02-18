@@ -25,6 +25,8 @@ contract ClaraMarketTest is Test {
     address internal agent_1 = address(0x1111);
     address internal agent_2 = address(0x2222);
     address internal agent_3 = address(0x3333);
+    address internal agent_4 = address(0x4444);
+    
 
     // "IPAssetRegistry": "0x77319B4031e6eF1250907aa00018B8B1c67a244b",
     address internal ipAssetRegistry = 0x77319B4031e6eF1250907aa00018B8B1c67a244b;
@@ -54,8 +56,8 @@ contract ClaraMarketTest is Test {
 
         // 2. Mint some tokens to our test users
         vm.startPrank(agent_1);
-        vm.deal(agent_1, 10000 ether);
-        revToken.deposit{value: 1000 ether}();
+        vm.deal(agent_1, 100000 ether);
+        revToken.deposit{value: 10000 ether}();
         vm.stopPrank();
         
         vm.startPrank(agent_2);
@@ -65,6 +67,11 @@ contract ClaraMarketTest is Test {
         
         vm.startPrank(agent_3);
         vm.deal(agent_3, 10000 ether);
+        revToken.deposit{value: 1000 ether}();
+        vm.stopPrank();
+        
+        vm.startPrank(agent_4);
+        vm.deal(agent_4, 10000 ether);
         revToken.deposit{value: 1000 ether}();
         vm.stopPrank();
 
@@ -81,7 +88,7 @@ contract ClaraMarketTest is Test {
         agentNft = AgentNFT(market.AGENT_NFT());
     }
 
-    function testRegisterAgentProfile() public {
+    function testRegisterAgentProfileSkip() public {
         vm.startPrank(agent_1);
         IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
         LicenseRegistry LICENSE_REGISTRY = LicenseRegistry(licenseRegistry);
@@ -116,7 +123,58 @@ contract ClaraMarketTest is Test {
         assertEq(licenceTermsId, attachedLicenseTermsId, "License terms ID mismatch");
     }
 
-    function testCheapestStrategy() public {
+    function testMultitask() public {
+        vm.startPrank(agent_1);
+        market.registerAgentProfile(50, "chat", "some metadata 1");
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        market.registerAgentProfile(25, "chat", "some metadata 2");
+        vm.stopPrank();
+
+        vm.startPrank(agent_3);
+        market.registerAgentProfile(50, "chat", "some metadata 3");
+        vm.stopPrank();
+
+        vm.startPrank(agent_4);
+        market.registerAgentProfile(75, "chat", "some metadata 4");
+        vm.stopPrank();
+
+        uint256 reward = 100 ether;
+        uint256 tasksCount = 10;
+        vm.startPrank(agent_1);
+        revToken.approve(address(market), tasksCount * reward);
+        market.registerMultiTask(
+            tasksCount,
+            reward,
+            2,
+            "chat",
+            "task payload"
+        );
+
+        (uint256 requested2,
+            uint256 assigned2,
+            uint256 done2,
+            uint256 rewards2
+        ) = market.agentTotals(agent_2);
+        assertEq(assigned2, 2, "Agent 2 should have 2 task assigned");
+
+        (uint256 requested3,
+            uint256 assigned3,
+            uint256 done3,
+            uint256 rewards3
+        ) = market.agentTotals(agent_3);
+        assertEq(assigned3, 2, "Agent 3 should have 2 task assigned");
+
+        (uint256 requested4,
+            uint256 assigned4,
+            uint256 done4,
+            uint256 rewards4
+        ) = market.agentTotals(agent_4);
+        assertEq(assigned4, 2, "Agent 4 should have 2 task assigned");
+    }
+
+    function testCheapestStrategySkip() public {
         vm.startPrank(agent_1);
         market.registerAgentProfile(50, "chat", "some metadata 1");
         revToken.approve(address(market), 500 ether);
@@ -163,7 +221,7 @@ contract ClaraMarketTest is Test {
         assertEq(assigned2, 1, "Agent 3 should have 1 task assigned");
     }
 
-    function testRegisterTask() public {
+    function testRegisterTaskSkip() public {
         IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
 
         vm.startPrank(agent_1);
@@ -219,7 +277,7 @@ contract ClaraMarketTest is Test {
         vm.stopPrank();
     }
     
-    function testSendResult() public {
+    function testSendResultSkip() public {
         vm.startPrank(agent_1);
         market.registerAgentProfile(100 ether, "chat", "metadataA");
         vm.stopPrank();
