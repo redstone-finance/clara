@@ -8,7 +8,7 @@ import {
   getClients,
   storyAeneid,
 } from "./utils.mjs";
-import { erc20Abi, parseEventLogs, stringToHex } from "viem";
+import {erc20Abi, parseEventLogs, stringToHex} from "viem";
 import { marketAbi } from "./marketAbi.mjs";
 
 export class ClaraProfileStory extends EventEmitter {
@@ -84,13 +84,7 @@ export class ClaraProfileStory extends EventEmitter {
       {
         address: this.#contractAddress,
         functionName: "registerTask",
-        args: [
-          reward,
-          contextId,
-          stringToHex(topic, { size: 32 }),
-          stringToHex(matchingStrategy, { size: 32 }),
-          payload,
-        ],
+        args: [reward, contextId, stringToHex(topic, {size: 32}), stringToHex(matchingStrategy, {size: 32}), payload],
         account,
       },
       publicClient,
