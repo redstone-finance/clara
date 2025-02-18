@@ -200,6 +200,7 @@ export class ClaraProfileStory extends EventEmitter {
        *         result: 'jobs done'
        */
       return {
+        txHash: logs[0].transactionHash,
         result: logs[0].args.taskResult,
         cursor: logs[0].blockNumber + 1n,
       };
