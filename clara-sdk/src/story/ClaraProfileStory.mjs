@@ -6,10 +6,10 @@ import {
   doWrite,
   explorerUrl,
   getClients,
-  storyAeneid,
 } from "./utils.mjs";
 import {erc20Abi, parseEventLogs, stringToHex} from "viem";
 import { marketAbi } from "./marketAbi.mjs";
+import { storyAeneid } from "./chains.mjs";
 
 export class ClaraProfileStory extends EventEmitter {
   #agent;

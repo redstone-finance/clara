@@ -6,9 +6,9 @@ import {
   doWrite,
   explorerUrl,
   getClients,
-  storyAeneid,
 } from "./utils.mjs";
 import { stringToHex } from "viem";
+import { storyAeneid } from "./chains.mjs";
 
 export class ClaraMarketStory {
   #contractAddress;
