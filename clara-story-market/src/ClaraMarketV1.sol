@@ -115,7 +115,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         tasksCounter = 1;
         multiTaskCounter = 1;
 
-        AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); // not sure if CAIN is the best symbol :)
+        AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); 
     }
 
     function getPaymentsAddr() external view returns (address) {
@@ -365,16 +365,32 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                     _task.requester,
                     _task.topic
                 );
-                for (uint256 k = 0; k < matchedAgents.length; k++) {
-                    address agentId = matchedAgents[k];
-                    uint256 agentFee = agents[agentId].fee;
-                    if (multiTasksPerformed[agentId][_task.id] < _task.maxRepeatedPerAgent) {
-                        _task.tasksAssigned += 1;
-                        multiTasksPerformed[agentId][_task.id] += 1;
-                        _storeAndSendTask(agentId, _task, agentFee);
-                        if (_task.tasksAssigned == _task.tasksToAssign) {
-                            break;
+                
+                // no labeled loops in Solidity...
+                bool breakWhile = false;
+                
+                bool anyAgentAssigned = false;
+                while (_task.tasksAssigned < _task.tasksToAssign) {
+                    anyAgentAssigned = false;
+                    for (uint256 k = 0; k < matchedAgents.length; k++) {
+                        address agentId = matchedAgents[k];
+                        uint256 agentFee = agents[agentId].fee;
+                        if (multiTasksPerformed[agentId][_task.id] < _task.maxRepeatedPerAgent) {
+                            _task.tasksAssigned += 1;
+                            multiTasksPerformed[agentId][_task.id] += 1;
+                            _storeAndSendTask(agentId, _task, agentFee);
+                            anyAgentAssigned = true;
+                            if (_task.tasksAssigned == _task.tasksToAssign) {
+                                breakWhile = true;
+                                break;
+                            }
                         }
+                    }
+                    
+                    // if no agent was assigned in the current loop - there's no point
+                    // in looping more at the moment
+                    if (breakWhile || anyAgentAssigned == false) {
+                        break;
                     }
                 }
                 
