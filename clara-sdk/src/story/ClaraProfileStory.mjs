@@ -1,54 +1,31 @@
-import EventEmitter from "node:events";
-import { REGISTER_TASK_TOPICS } from "../ao/ClaraMarketAO.mjs";
-import {
-  determineTransport,
-  doRead,
-  doWrite,
-  explorerUrl,
-  getClients,
-} from "./utils.mjs";
-import {erc20Abi, parseEventLogs, stringToHex} from "viem";
-import { marketAbi } from "./marketAbi.mjs";
-import { storyAeneid } from "./chains.mjs";
+import EventEmitter from 'node:events';
+import { REGISTER_TASK_TOPICS } from '../ao/ClaraMarketAO.mjs';
+import { determineTransport, doRead, doWrite, explorerUrl, getClients } from './utils.mjs';
+import { erc20Abi, hexToString, parseEventLogs, stringToHex } from 'viem';
+import { marketAbi } from './marketAbi.mjs';
+import { storyAeneid } from './chains.mjs';
 
 export class ClaraProfileStory extends EventEmitter {
   #agent;
   #contractAddress;
   #chain;
 
-  constructor(
-    account,
-    contractAddress,
-    chain = storyAeneid,
-    transport = determineTransport(),
-  ) {
+  constructor(account, contractAddress, chain = storyAeneid, transport = determineTransport()) {
     super();
     if (!contractAddress) {
-      throw new Error("C.L.A.R.A. Market contract address required");
+      throw new Error('C.L.A.R.A. Market contract address required');
     }
     this.#contractAddress = contractAddress;
     this.#chain = chain;
-    const { publicClient, walletClient } = getClients(
-      account,
-      chain,
-      transport,
-    );
+    const { publicClient, walletClient } = getClients(account, chain, transport);
 
     // TODO: not sure if account.address works in case of JSON-Rpc Account - https://viem.sh/docs/clients/wallet#optional-hoist-the-account
     this.#agent = { id: account.address, account, publicClient, walletClient };
   }
 
-  async registerTask({
-    topic,
-    reward,
-    matchingStrategy,
-    payload,
-    contextId = 0,
-  }) {
+  async registerTask({ topic, reward, matchingStrategy, payload, contextId = 0 }) {
     if (!REGISTER_TASK_TOPICS.includes(topic)) {
-      throw new Error(
-        `Unknown topic ${topic}, allowed ${JSON.stringify(REGISTER_TASK_TOPICS)}`,
-      );
+      throw new Error(`Unknown topic ${topic}, allowed ${JSON.stringify(REGISTER_TASK_TOPICS)}`);
     }
     const { account, publicClient, walletClient } = this.#agent;
 
@@ -56,39 +33,43 @@ export class ClaraProfileStory extends EventEmitter {
     const paymentTokenAddr = await doRead(
       {
         address: this.#contractAddress,
-        functionName: "getPaymentsAddr",
+        functionName: 'getPaymentsAddr',
       },
-      publicClient,
+      publicClient
     );
-    console.log("Payment token: ", paymentTokenAddr);
+    console.log('Payment token: ', paymentTokenAddr);
 
     // (o) set allowance on token for the market contract
     const allowanceTxId = await doWrite(
       {
         abi: erc20Abi,
         address: paymentTokenAddr,
-        functionName: "approve",
+        functionName: 'approve',
         args: [this.#contractAddress, reward],
         account,
       },
       publicClient,
-      walletClient,
+      walletClient
     );
-    console.log(
-      `Allowance set: ${explorerUrl(this.#chain)}/tx/${allowanceTxId}`,
-    );
+    console.log(`Allowance set: ${explorerUrl(this.#chain)}/tx/${allowanceTxId}`);
 
     await publicClient.waitForTransactionReceipt({ hash: allowanceTxId });
 
     const txHash = await doWrite(
       {
         address: this.#contractAddress,
-        functionName: "registerTask",
-        args: [reward, contextId, stringToHex(topic, {size: 32}), stringToHex(matchingStrategy, {size: 32}), payload],
+        functionName: 'registerTask',
+        args: [
+          reward,
+          contextId,
+          stringToHex(topic, { size: 32 }),
+          stringToHex(matchingStrategy, { size: 32 }),
+          payload,
+        ],
         account,
       },
       publicClient,
-      walletClient,
+      walletClient
     );
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: txHash,
@@ -96,7 +77,7 @@ export class ClaraProfileStory extends EventEmitter {
 
     const logs = parseEventLogs({
       abi: marketAbi,
-      eventName: "TaskAssigned",
+      eventName: 'TaskAssigned',
       logs: receipt.logs,
     });
     const task = logs[0].args.task;
@@ -109,12 +90,12 @@ export class ClaraProfileStory extends EventEmitter {
     const txHash = await doWrite(
       {
         address: this.#contractAddress,
-        functionName: "sendResult",
+        functionName: 'sendResult',
         args: [taskId, result],
         account,
       },
       publicClient,
-      walletClient,
+      walletClient
     );
 
     console.log(`Result sent: ${explorerUrl(this.#chain)}/tx/${txHash}`);
@@ -127,12 +108,12 @@ export class ClaraProfileStory extends EventEmitter {
     const txId = await doWrite(
       {
         address: this.#contractAddress,
-        functionName: "updateAgentFee",
+        functionName: 'updateAgentFee',
         args: [newFee],
         account,
       },
       publicClient,
-      walletClient,
+      walletClient
     );
 
     console.log(`Fee updated: ${explorerUrl(this.#chain)}/tx/${txId}`);
@@ -144,7 +125,7 @@ export class ClaraProfileStory extends EventEmitter {
     const logs = await publicClient.getContractEvents({
       address: this.#contractAddress,
       abi: marketAbi,
-      eventName: "TaskAssigned",
+      eventName: 'TaskAssigned',
       args: {
         assignedAgent: this.#agent.id,
       },
@@ -165,9 +146,13 @@ export class ClaraProfileStory extends EventEmitter {
        *         payload: 'just do it',
        *         topic: 'chat'
        */
+      const task = {
+        ...logs[0].args.task,
+        topic: hexToString(logs[0].args.task.topic).replace(/\u0000/g, ''),
+      };
       return {
         txHash: logs[0].transactionHash,
-        result: logs[0].args.task,
+        result: task,
         cursor: logs[0].blockNumber + 1n,
       };
     } else {
@@ -184,7 +169,7 @@ export class ClaraProfileStory extends EventEmitter {
     const logs = await publicClient.getContractEvents({
       address: this.#contractAddress,
       abi: marketAbi,
-      eventName: "TaskResultSent",
+      eventName: 'TaskResultSent',
       args: {
         requestingAgent: this.#agent.id,
       },
