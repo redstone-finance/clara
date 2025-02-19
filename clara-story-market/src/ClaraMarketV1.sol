@@ -64,7 +64,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     IRoyaltyModule public immutable ROYALTY_MODULE;
     
     uint256 public tasksCounter;
-    uint256 public multiTaskCounter;
 
     RevenueToken public immutable REVENUE_TOKEN;
     AgentNFT public immutable AGENT_NFT;
@@ -116,7 +115,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         topics[TOPIC_NONE] = true;
 
         tasksCounter = 1;
-        multiTaskCounter = 1;
 
         AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); 
     }
@@ -372,13 +370,12 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         originalTask.reward = agentFee;
         originalTask.agentId = _agentId;
 
-        uint256 taskId = tasksCounter++;
         originalTask.tasksAssigned++;
         
         MarketLib.Task memory finalTask =
             originalTask.isMultiTask 
                 ?  MarketLib.Task({
-                id: taskId,
+                id: tasksCounter++,
                 parentTaskId: originalTask.parentTaskId,
                 contextId: originalTask.contextId,
                 timestamp: originalTask.timestamp,
