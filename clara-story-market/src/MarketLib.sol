@@ -28,6 +28,7 @@ library MarketLib {
 
     struct Task {
         uint256 id;                  // unique task ID 
+        uint256 parentTaskId;        // parent task ID - set only for multitasks
         uint256 contextId;           // used in chat to group tasks
         uint256 timestamp;          // block.timestamp
         uint256 blockNumber;        // block.number// who created the task
@@ -39,8 +40,9 @@ library MarketLib {
         address requester;
         address agentId;             // the assigned agent 
         address childIpId;
-        bytes32 matchingStrategy;    // e.g. "leastOccupied", "broadcast", "cheapest"
         bytes32 topic;               // e.g. "chat"
+        bool isMultiTask;
+        bool isDeleted; // marks task as already assigned (in case of multitask - all instanaces were assigned)
         string payload;             // arbitrary JSON or IPFS/Arweave txId?
     }
 

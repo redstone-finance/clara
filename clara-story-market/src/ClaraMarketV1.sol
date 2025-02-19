@@ -26,17 +26,13 @@ error AgentAlreadyRegistered(address agent);
 error TaskNotFound(uint256 taskId);
 error ValueNegative();
 error NoAgentsMatchedForTask();
+error PreviousTaskNotSentBack(uint256 taskId);
 
 /**
  * @title ClaraMarketV1
  */
 contract ClaraMarketV1 is Context, ERC721Holder {
     // constants
-    bytes32 internal constant STRATEGY_BROADCAST = "broadcast";
-    bytes32 internal constant STRATEGY_LEAST_OCCUPIED = "leastOccupied";
-    bytes32 internal constant STRATEGY_CHEAPEST = "cheapest";
-    bytes32 internal constant STRATEGY_MULTITASK = "multiTask";
-
     bytes32 internal constant TOPIC_TWEET = "tweet";
     bytes32 internal constant TOPIC_DISCORD = "discord";
     bytes32 internal constant TOPIC_TELEGRAM = "telegram";
@@ -53,12 +49,12 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     MarketLib.MarketTotals public marketTotals;
     mapping(address => MarketLib.AgentInfo) public agents;
     address[] public allAgents;
+    MarketLib.Task[] public allTasks;
     uint256 public agentsLength;
+    uint256 public unassignedTasksLength;
     mapping(address => MarketLib.AgentTotals) public agentTotals;
-    mapping(address => mapping(uint256 => uint256)) public multiTasksPerformed;
-    mapping(address => mapping(uint256 => MarketLib.Task)) public agentInbox;
-    using QueueLib for QueueLib.Queue;
-    QueueLib.Queue public tasksQueue;
+    mapping(address => mapping(uint256 => uint256)) public multiTasksAssigned;
+    mapping(address => MarketLib.Task) public agentInbox;
 
     IPAssetRegistry public immutable IP_ASSET_REGISTRY;
     ILicensingModule public immutable LICENSING_MODULE;
@@ -75,14 +71,25 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     
     // internal
     mapping(bytes32 => bool) internal topics;
-    mapping(bytes32 => bool) internal matchingStrategies;
-
 
     // events
-    event RegisteredAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
-    event UpdatedAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
-    event TaskAssigned(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.Task task);
-    event TaskResultSent(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.TaskResult taskResult);
+    event AgentRegistered(address indexed agent, MarketLib.AgentInfo agentInfo);
+    event AgentUpdated(address indexed agent, MarketLib.AgentInfo agentInfo);
+    event TaskRegistered(
+        address indexed requestingAgent,
+        address indexed assignedAgent,
+        uint256 indexed taskId,
+        MarketLib.Task task);
+    event TaskAssigned(
+        address indexed requestingAgent,
+        address indexed assignedAgent,
+        uint256 indexed taskId,
+        MarketLib.Task task);
+    event TaskResultSent(
+        address indexed requestingAgent,
+        address indexed assignedAgent,
+        uint256 indexed taskId,
+        MarketLib.TaskResult taskResult);
 
     constructor(
         address ipAssetRegistry,
@@ -107,10 +114,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         topics[TOPIC_NFT] = true;
         topics[TOPIC_CHAT] = true;
         topics[TOPIC_NONE] = true;
-
-        matchingStrategies[STRATEGY_BROADCAST] = true;
-        matchingStrategies[STRATEGY_LEAST_OCCUPIED] = true;
-        matchingStrategies[STRATEGY_CHEAPEST] = true;
 
         tasksCounter = 1;
         multiTaskCounter = 1;
@@ -161,8 +164,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             licenceTermsId: licenseTermsId
 
         });
-        _dispatchTasksInternal();
-        emit RegisteredAgent(_msgSender(), agents[_msgSender()]);
+        emit AgentRegistered(_msgSender(), agents[_msgSender()]);
     }
 
     function updateAgentFee(uint256 _fee)
@@ -172,15 +174,23 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         require(_fee >= 0, ValueNegative());
 
         agents[_msgSender()].fee = _fee;
-        _dispatchTasksInternal();
-        emit UpdatedAgent(_msgSender(), agents[_msgSender()]);
+        emit AgentUpdated(_msgSender(), agents[_msgSender()]);
+    }
+
+    function updateAgentTopic(bytes32 _topic)
+    external
+    {
+        require(agents[_msgSender()].exists == true, AgentNotRegistered(_msgSender()));
+        _assertTopic(_topic);
+
+        agents[_msgSender()].topic = _topic;
+        emit AgentUpdated(_msgSender(), agents[_msgSender()]);
     }
 
     function registerTask(
         uint256 _reward,
         uint256 _contextId,
         bytes32 _topic,
-        bytes32 _matchingStrategy,
         string calldata _payload
     )
     external
@@ -188,32 +198,35 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         _assertAgentRegistered();
         require(_reward >= 0, ValueNegative());
         _assertTopic(_topic);
-        _assertMatchingStrategy(_matchingStrategy);
 
         agentTotals[_msgSender()].requested += 1;
+        
+        uint256 taskId = tasksCounter++;
 
         MarketLib.Task memory newTask = MarketLib.Task({
-            id: 0,
-            contextId: _contextId == 0 ? 0 : _contextId,
+            id: taskId,
+            parentTaskId: 0,
+            contextId: _contextId == 0 ? taskId : _contextId,
             timestamp: block.timestamp,
             blockNumber: block.number,
             reward: _reward,
             requester: _msgSender(),
             agentId: ZERO_ADDRESS,
-            matchingStrategy: _matchingStrategy,
             payload: _payload,
             topic: _topic,
             childTokenId: 0,
             childIpId: ZERO_ADDRESS,
             tasksToAssign: 1,
-            tasksAssigned: 1,
-            maxRepeatedPerAgent: 0
+            tasksAssigned: 0,
+            maxRepeatedPerAgent: 1,
+            isMultiTask: false,
+            isDeleted: false
         });
 
+        allTasks.push(newTask);
+        unassignedTasksLength++;
         // locking Revenue Tokens on Market contract - allowance required!
         REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _reward);
-        tasksQueue.push(newTask);
-        _dispatchTasksInternal();
     }
 
     function registerMultiTask(
@@ -229,30 +242,76 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         require(_maxRewardPerTask >= 0, ValueNegative());
         _assertTopic(_topic);
 
-        agentTotals[_msgSender()].requested += 1;
+        agentTotals[_msgSender()].requested += _tasksCount; // not sure about this
 
+        
         MarketLib.Task memory newTask = MarketLib.Task({
-            id: multiTaskCounter++,
+            id: 0,
+            parentTaskId: tasksCounter++,
             contextId: 0,
             timestamp: block.timestamp,
             blockNumber: block.number,
             reward: _maxRewardPerTask,
             requester: _msgSender(),
             agentId: ZERO_ADDRESS,
-            matchingStrategy: STRATEGY_MULTITASK,
             payload: _payload,
             topic: _topic,
             childTokenId: 0,
             childIpId: ZERO_ADDRESS,
             tasksToAssign: _tasksCount,
             tasksAssigned: 0,
-            maxRepeatedPerAgent: _maxRepeatedTasksPerAgent
+            maxRepeatedPerAgent: _maxRepeatedTasksPerAgent,
+            isMultiTask: true,
+            isDeleted: false
         });
 
+        allTasks.push(newTask);
+        unassignedTasksLength += _tasksCount;
         // locking Revenue Tokens on Market contract - allowance required!
-        tasksQueue.push(newTask);
         REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _tasksCount * _maxRewardPerTask);
-        _dispatchTasksInternal();
+    }
+
+    function loadNextTask()
+    external
+    {
+        if (unassignedTasksLength == 0) {
+            return;
+        }
+        address sender = _msgSender();
+        require(agentInbox[sender].requester == address(0), PreviousTaskNotSentBack(agentInbox[sender].id));
+        
+        require(agents[sender].exists == true, AgentNotRegistered(sender));
+        uint256 currentTasksLength = allTasks.length;
+        MarketLib.AgentInfo memory agent = agents[sender];
+        
+        for (uint256 i = 0; i < currentTasksLength; i++) {
+            MarketLib.Task memory task = allTasks[i];
+            if (task.isDeleted) {
+                continue;
+            }
+            if (agent.topic == task.topic
+                && agent.fee <= task.reward
+                && task.requester != sender
+                && (!task.isMultiTask 
+                    || (task.isMultiTask 
+                        && multiTasksAssigned[sender][task.parentTaskId] < task.maxRepeatedPerAgent))
+            ) {
+                _loadTask(
+                    sender,
+                    task,
+                    agent.fee);
+                unassignedTasksLength--;
+                if (task.isMultiTask) {
+                    if (++multiTasksAssigned[sender][task.parentTaskId] == task.maxRepeatedPerAgent) {
+                        task.isDeleted = true;
+                    } 
+                } else {
+                    task.isDeleted = true;
+                }
+                return;
+            }
+        }
+
     }
 
     function sendResult(
@@ -263,13 +322,13 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     {
         _assertAgentRegistered();
 
-        MarketLib.Task memory originalTask = agentInbox[_msgSender()][_taskId];
+        MarketLib.Task memory originalTask = agentInbox[_msgSender()];
         require(
             originalTask.id != 0,
             TaskNotFound(_taskId)
         );
 
-        delete agentInbox[_msgSender()][_taskId];
+        delete agentInbox[_msgSender()];
 
         agentTotals[_msgSender()].done += 1;
         agentTotals[_msgSender()].rewards += originalTask.reward;
@@ -304,112 +363,8 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         emit TaskResultSent(originalTask.requester, _msgSender(), originalTask.id, taskResult);
     }
 
-    function _dispatchTasksInternal() internal {
-        uint256 tasksQueueLength = tasksQueue.length();
-        if (tasksQueueLength == 0) {
-            return;
-        }
 
-        MarketLib.Task[] memory notMatchedTasks = new MarketLib.Task[](tasksQueueLength);
-        uint256 notMatchedTasksCount = 0;
-        
-        for (uint256 idx = 0; idx < tasksQueueLength; idx++) {
-            if (tasksQueue.isEmpty()) {
-                // this should not happen, but better safe than sorry...
-                return;
-            }
-            MarketLib.Task memory _task = tasksQueue.pop();
-
-            if (_task.matchingStrategy == STRATEGY_BROADCAST) {
-                // broadcast strategy => assign to all matching agents
-                address[] memory matchedAgents = _filterAgentsWithTopicAndFee(
-                    _task.reward,
-                    _task.requester,
-                    _task.topic
-                );
-                if (matchedAgents.length == 0) {
-                    notMatchedTasks[notMatchedTasksCount++] = _task;
-                } else {
-                    uint256 rewardLeft = _task.reward;
-                
-                    for (uint256 k = 0; k < matchedAgents.length; k++) {
-                        address agentId = matchedAgents[k];
-                        uint256 agentFee = agents[agentId].fee;
-                        if (rewardLeft >= agentFee) {
-                            _storeAndSendTask(agentId, _task, agentFee);
-                            rewardLeft -= agentFee;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            } else if (_task.matchingStrategy == STRATEGY_LEAST_OCCUPIED) {
-                address chosen = _matchLeastOccupied(_task.reward, _task.requester, _task.topic);
-                if (chosen != ZERO_ADDRESS) {
-                    uint256 agentFee = agents[chosen].fee;
-                    _storeAndSendTask(chosen, _task, agentFee);
-                } else {
-                    notMatchedTasks[notMatchedTasksCount++] = _task;
-                }
-            } else if (_task.matchingStrategy == STRATEGY_CHEAPEST) {
-                address chosen = _matchCheapest(_task.reward, _task.requester, _task.topic);
-                if (chosen != ZERO_ADDRESS) {
-                    uint256 agentFee = agents[chosen].fee;
-                    _storeAndSendTask(chosen, _task, agentFee);
-                } else {
-                    notMatchedTasks[notMatchedTasksCount++] = _task;
-                }
-            } else if (_task.matchingStrategy == STRATEGY_MULTITASK) {
-                address[] memory matchedAgents = _filterAgentsWithTopicAndFee(
-                    _task.reward,
-                    _task.requester,
-                    _task.topic
-                );
-                
-                // no labeled loops in Solidity...
-                bool breakWhile = false;
-                
-                bool anyAgentAssigned = false;
-                while (_task.tasksAssigned < _task.tasksToAssign) {
-                    anyAgentAssigned = false;
-                    for (uint256 k = 0; k < matchedAgents.length; k++) {
-                        address agentId = matchedAgents[k];
-                        uint256 agentFee = agents[agentId].fee;
-                        if (multiTasksPerformed[agentId][_task.id] < _task.maxRepeatedPerAgent) {
-                            _task.tasksAssigned += 1;
-                            multiTasksPerformed[agentId][_task.id] += 1;
-                            _storeAndSendTask(agentId, _task, agentFee);
-                            anyAgentAssigned = true;
-                            if (_task.tasksAssigned == _task.tasksToAssign) {
-                                breakWhile = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // if no agent was assigned in the current loop - there's no point
-                    // in looping more at the moment
-                    if (breakWhile || anyAgentAssigned == false) {
-                        break;
-                    }
-                }
-                
-                // force the task to be put again in the queue
-                if (_task.tasksAssigned < _task.tasksToAssign) {
-                    notMatchedTasks[notMatchedTasksCount++] = _task;
-                }
-            }
-        }
-        
-        // push the tasks that were not assigned back on queue
-        if (notMatchedTasksCount > 0) {
-            for (uint256 idx = 0; idx < notMatchedTasksCount; idx++) {
-                tasksQueue.push(notMatchedTasks[idx]);
-            }
-        }
-    }
-
-    function _storeAndSendTask(
+    function _loadTask(
         address _agentId,
         MarketLib.Task memory originalTask,
         uint256 agentFee
@@ -418,25 +373,31 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         originalTask.agentId = _agentId;
 
         uint256 taskId = tasksCounter++;
+        originalTask.tasksAssigned++;
         
-        // TODO: optimize
-        MarketLib.Task memory finalTask = MarketLib.Task({
-            id: taskId,
-            contextId: originalTask.contextId == 0 ? taskId : originalTask.contextId,
-            timestamp: originalTask.timestamp,
-            blockNumber: originalTask.blockNumber,
-            reward: originalTask.reward,
-            requester: originalTask.requester,
-            agentId: originalTask.agentId,
-            matchingStrategy: originalTask.matchingStrategy,
-            payload: originalTask.payload,
-            topic: originalTask.topic,
-            childTokenId: 0,
-            childIpId: ZERO_ADDRESS,
-            tasksToAssign: originalTask.tasksToAssign,
-            tasksAssigned: originalTask.tasksAssigned,
-            maxRepeatedPerAgent: originalTask.maxRepeatedPerAgent
-        });
+        MarketLib.Task memory finalTask =
+            originalTask.isMultiTask 
+                ?  MarketLib.Task({
+                id: taskId,
+                parentTaskId: originalTask.parentTaskId,
+                contextId: originalTask.contextId,
+                timestamp: originalTask.timestamp,
+                blockNumber: originalTask.blockNumber,
+                reward: originalTask.reward,
+                requester: originalTask.requester,
+                agentId: originalTask.agentId,
+                payload: originalTask.payload,
+                topic: originalTask.topic,
+                childTokenId: 0,
+                childIpId: ZERO_ADDRESS,
+                tasksToAssign: originalTask.tasksToAssign,
+                tasksAssigned: originalTask.tasksAssigned,
+                maxRepeatedPerAgent: originalTask.maxRepeatedPerAgent,
+                isMultiTask: true,
+                isDeleted: false
+            }) 
+                : originalTask;
+        
 
         uint256 childTokenId = AGENT_NFT.mint(address(this));
         address childIpId = IP_ASSET_REGISTRY.register(block.chainid, address(AGENT_NFT), childTokenId);
@@ -467,7 +428,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         finalTask.childIpId = childIpId;
         finalTask.childTokenId = childTokenId;
 
-        agentInbox[_agentId][finalTask.id] = finalTask;
+        agentInbox[_agentId] = finalTask;
         agentTotals[_agentId].assigned += 1;
 
         // transfer the NFT to the receiver so it owns the child IPA
@@ -476,108 +437,11 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         emit TaskAssigned(finalTask.requester, _agentId, finalTask.id, finalTask);
     }
 
-    function _filterAgentsWithTopicAndFee(
-        uint256 _reward,
-        address _requesterId,
-        bytes32 _topic
-    ) internal view returns (address[] memory) {
-        address[] memory temp = new address[](allAgents.length);
-        uint256 count = 0;
-        // console.log("All agents length", allAgents.length);
-
-        for (uint256 i = 0; i < allAgents.length; i++) {
-            // console.log("checking agent");
-            address id_ = allAgents[i];
-            MarketLib.AgentInfo memory agentInfo = agents[id_];
-
-            if (!agentInfo.exists) {
-                continue;
-            }
-            
-            if (agentInfo.topic == TOPIC_NONE) {
-                continue;
-            }
-
-            // topic must match
-            if (agentInfo.topic != _topic) {
-                continue;
-            }
-
-            // fee must be <= reward
-            if (agentInfo.fee > _reward) {
-                continue;
-            }
-
-            // cannot assign to self
-            if (_requesterId == id_) {
-                continue;
-            }
-
-            temp[count++] = id_;
-        }
-
-        address[] memory filtered = new address[](count);
-        for (uint256 j = 0; j < count; j++) {
-            filtered[j] = temp[j];
-        }
-        return filtered;
-    }
-
-    function _matchLeastOccupied(
-        uint256 _reward,
-        address _requesterId,
-        bytes32 _topic
-    ) internal view returns (address) {
-        address[] memory candidates = _filterAgentsWithTopicAndFee(_reward, _requesterId, _topic);
-        if (candidates.length == 0) {
-            return ZERO_ADDRESS;
-        }
-
-        uint256 minCount = type(uint256).max;
-        address chosen = ZERO_ADDRESS;
-
-        for (uint256 i = 0; i < candidates.length; i++) {
-            uint256 inboxCount = _agentInboxCount(candidates[i]);
-            if (inboxCount < minCount) {
-                minCount = inboxCount;
-                chosen = candidates[i];
-            }
-        }
-        return chosen;
-    }
-
-    function _matchCheapest(
-        uint256 _reward,
-        address _requesterId,
-        bytes32 _topic
-    ) internal view returns (address) {
-        address[] memory candidates = _filterAgentsWithTopicAndFee(_reward, _requesterId, _topic);
-        if (candidates.length == 0) {
-            return ZERO_ADDRESS;
-        }
-
-        uint256 minFee = type(uint256).max;
-        uint256 minAssigned = type(uint256).max;
-        address chosen = ZERO_ADDRESS;
-
-        for (uint256 i = 0; i < candidates.length; i++) {
-            uint256 fee_ = agents[candidates[i]].fee;
-            uint256 assigned_ = agentTotals[candidates[i]].assigned;
-            if (fee_ <= minFee && assigned_ < minAssigned) {
-                minFee = fee_;
-                minAssigned = assigned_;
-                chosen = candidates[i];
-            }
-        }
-
-        return chosen;
-    }
-
     function _agentInboxCount(address _agentId) private view returns (uint256) {
         MarketLib.AgentTotals memory tot = agentTotals[_agentId];
         // approximate:
         uint256 currentlyInInbox = tot.assigned - tot.done;
-        return currentlyInInbox;
+        return currentlyInInbox; // currently - 1 at most..so can be simplified
     }
 
     function _registerAgent() internal {
@@ -593,9 +457,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         require(topics[_topic], UnknownTopic(_topic));
     }
 
-    function _assertMatchingStrategy(bytes32 _matchingStrategy) internal view {
-        require(matchingStrategies[_matchingStrategy], UnknownMatchingStrategy(_matchingStrategy));
-    }
 
     function _assertAgentRegistered() internal view {
         require(agents[_msgSender()].exists, AgentNotRegistered(_msgSender()));
