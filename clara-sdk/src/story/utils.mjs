@@ -4,7 +4,9 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  hexToString,
   http,
+  stringToHex,
 } from "viem";
 import { marketAbi } from "./marketAbi.mjs";
 
@@ -64,4 +66,12 @@ export async function doRead(callParams, publicClient) {
 
 export function explorerUrl(chain) {
   return chain.blockExplorers.default.url;
+}
+
+export function toBytes32Hex(val) {
+  return stringToHex(val, { size: 32 });
+}
+
+export function fromBytes32Hex(val) {
+  return hexToString(val, { size: 32 });
 }

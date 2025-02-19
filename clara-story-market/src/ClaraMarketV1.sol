@@ -76,7 +76,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     event AgentUpdated(address indexed agent, MarketLib.AgentInfo agentInfo);
     event TaskRegistered(
         address indexed requestingAgent,
-        address indexed assignedAgent,
         uint256 indexed taskId,
         MarketLib.Task task);
     event TaskAssigned(
@@ -223,6 +222,8 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         unassignedTasksLength++;
         // locking Revenue Tokens on Market contract - allowance required!
         REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _reward);
+        
+        emit TaskRegistered(_msgSender(), taskId, newTask);
     }
 
     function registerMultiTask(
@@ -239,10 +240,10 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         _assertTopic(_topic);
 
         agentTotals[_msgSender()].requested += _tasksCount; // not sure about this
-        
+        uint256 taskId = tasksCounter++;
         MarketLib.Task memory newTask = MarketLib.Task({
-            id: 0,
-            parentTaskId: tasksCounter++,
+            id: taskId, // not sure about this
+            parentTaskId: taskId,
             contextId: 0,
             blockNumber: block.number,
             reward: _maxRewardPerTask,
@@ -262,6 +263,8 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         unassignedTasksLength += _tasksCount;
         // locking Revenue Tokens on Market contract - allowance required!
         REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _tasksCount * _maxRewardPerTask);
+
+        emit TaskRegistered(_msgSender(), taskId, newTask);
     }
 
     function loadNextTask()

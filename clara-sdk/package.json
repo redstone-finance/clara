@@ -1,6 +1,6 @@
 {
   "name": "redstone-clara-sdk",
-  "version": "0.0.32",
+  "version": "0.1.0",
   "description": "A SDK for C.L.A.R.A.",
   "homepage": "https://github.com/warp-contracts/clara/tree/main/clara-sdk",
   "main": "./lib/index.cjs",
@@ -31,13 +31,13 @@
     "@permaweb/aoconnect": "^0.0.62",
     "arweave": "^1.15.5",
     "exponential-backoff": "^3.1.1",
-    "viem": "^2.23.2"
+    "viem": "^2.23.3"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "dotenv": "^16.4.7  ",
+    "dotenv": "^16.4.7",
     "esbuild": "^0.25.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.4.3",
