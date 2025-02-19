@@ -6,7 +6,7 @@ gas_reports = ["*"]
 optimizer = true
 optimizer_runs = 20000
 test = 'test'
-via_ir = true
+via_ir = true # - do not use! https://github.com/ethereum/solidity/issues/14878
 solc = '0.8.26'
 fs_permissions = [{ access = 'read', path = './out' }, { access = 'read-write', path = './deploy-out' }]
 evm_version = 'cancun'

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
-import {ClaraMarketV1} from "../src/ClaraMarketV1.sol";
+import {ClaraMarketV1, PreviousTaskNotSentBack} from "../src/ClaraMarketV1.sol";
 import {MarketLib} from "../src/MarketLib.sol";
 import {RevenueToken} from "../src/mocks/RevenueToken.sol";
 import {AgentNFT} from "../src/mocks/AgentNFT.sol";
@@ -26,6 +26,8 @@ contract ClaraMarketTest is Test {
     address internal agent_2 = address(0x2222);
     address internal agent_3 = address(0x3333);
     address internal agent_4 = address(0x4444);
+    address internal agent_5 = address(0x5555);
+    address internal agent_6 = address(0x6666);
     
 
     // "IPAssetRegistry": "0x77319B4031e6eF1250907aa00018B8B1c67a244b",
@@ -88,7 +90,7 @@ contract ClaraMarketTest is Test {
         agentNft = AgentNFT(market.AGENT_NFT());
     }
 
-    function testRegisterAgentProfileSkip() public {
+    function testRegisterAgentProfile() public {
         vm.startPrank(agent_1);
         IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
         LicenseRegistry LICENSE_REGISTRY = LicenseRegistry(licenseRegistry);
@@ -151,77 +153,148 @@ contract ClaraMarketTest is Test {
             "chat",
             "task payload"
         );
+        assertEq(market.unassignedTasksLength(), 10, "There should be 10 unassigned tasks");
+        vm.stopPrank();
+        vm.startPrank(agent_2);
+        market.loadNextTask();
+        vm.stopPrank();
 
+        vm.startPrank(agent_3);
+        market.loadNextTask();
+        vm.stopPrank();
+
+        vm.startPrank(agent_4);
+        market.loadNextTask();
+        vm.stopPrank();
+        
         (uint256 requested2,
             uint256 assigned2,
             uint256 done2,
             uint256 rewards2
         ) = market.agentTotals(agent_2);
-        assertEq(assigned2, 2, "Agent 2 should have 2 task assigned");
+        assertEq(assigned2, 1, "Agent 2 should have 1 task assigned");
 
         (uint256 requested3,
             uint256 assigned3,
             uint256 done3,
             uint256 rewards3
         ) = market.agentTotals(agent_3);
-        assertEq(assigned3, 2, "Agent 3 should have 2 task assigned");
+        assertEq(assigned3, 1, "Agent 3 should have 1 task assigned");
 
         (uint256 requested4,
             uint256 assigned4,
             uint256 done4,
             uint256 rewards4
         ) = market.agentTotals(agent_4);
-        assertEq(assigned4, 2, "Agent 4 should have 2 task assigned");
-    }
-
-    function testCheapestStrategySkip() public {
-        vm.startPrank(agent_1);
-        market.registerAgentProfile(50, "chat", "some metadata 1");
-        revToken.approve(address(market), 500 ether);
-        vm.stopPrank();
+        assertEq(assigned4, 1, "Agent 4 should have 1 task assigned");
 
         vm.startPrank(agent_2);
-        market.registerAgentProfile(50, "chat", "some metadata 2");
+        market.sendResult(1, "whatever");
+        market.loadNextTask();
         vm.stopPrank();
 
         vm.startPrank(agent_3);
-        market.registerAgentProfile(50, "chat", "some metadata 2");
+        market.sendResult(2, "whatever");
+        market.loadNextTask();
         vm.stopPrank();
 
-        uint256 reward = 50 ether;
-        vm.startPrank(agent_1);
-        market.registerTask(
-            reward,
-            0,
-            "chat",
-            "cheapest",
-            "task payload"
-        );
-        market.registerTask(
-            reward,
-            0,
-            "chat",
-            "cheapest",
-            "task payload"
-        );
+        vm.startPrank(agent_4);
+        market.sendResult(3, "whatever");
+        market.loadNextTask();
         vm.stopPrank();
 
-        (uint256 requested1,
-            uint256 assigned1,
-            uint256 done1,
-            uint256 rewards1
+        assertEq(market.unassignedTasksLength(), 4, "There should be 4 unassigned tasks");
+
+        (uint256 requested2_2,
+            uint256 assigned2_2,
+            uint256 done2_2,
+            uint256 rewards2_2
         ) = market.agentTotals(agent_2);
-        assertEq(assigned1, 1, "Agent 2 should have 1 task assigned");
+        assertEq(assigned2_2, 2, "Agent 2 should have 2 tasks assigned");
 
-        (uint256 requested2,
-            uint256 assigned2,
-            uint256 done2,
-            uint256 rewards2
+        (uint256 requested3_2,
+            uint256 assigned3_2,
+            uint256 done3_2,
+            uint256 rewards3_2
         ) = market.agentTotals(agent_3);
-        assertEq(assigned2, 1, "Agent 3 should have 1 task assigned");
+        assertEq(assigned3_2, 2, "Agent 3 should have 2 tasks assigned");
+
+        (uint256 requested4_2,
+            uint256 assigned4_2,
+            uint256 done4_2,
+            uint256 rewards4_2
+        ) = market.agentTotals(agent_4);
+        assertEq(assigned4_2, 2, "Agent 4 should have 2 tasks assigned");
+
+        vm.startPrank(agent_2);
+        market.sendResult(4, "whatever");
+        market.loadNextTask();
+        vm.stopPrank();
+        (uint256 requested2_3,
+            uint256 assigned2_3,
+            uint256 done2_3,
+            uint256 rewards2_3
+        ) = market.agentTotals(agent_2);
+        // because max tasks per agent is 2.
+        assertEq(assigned2_2, 2, "Agent 2 should have 2 tasks assigned");
+
+        vm.startPrank(agent_5);
+        market.registerAgentProfile(50, "chat", "some metadata 5");
+        market.loadNextTask();
+        market.sendResult(7, "whatever");
+        market.loadNextTask();
+        market.sendResult(8, "whatever");
+        vm.stopPrank();
+
+        assertEq(market.unassignedTasksLength(), 2, "There should be 2 unassigned tasks");
+        
+        (uint256 requested5,
+            uint256 assigned5,
+            uint256 done5,
+            uint256 rewards5
+        ) = market.agentTotals(agent_5);
+        assertEq(assigned5, 2, "Agent 5 should have 2 tasks assigned");
+        assertEq(done5, 2, "Agent 5 should have 2 tasks done");
+
+        vm.startPrank(agent_6);
+        market.registerAgentProfile(25, "chat", "some metadata 6");
+        market.loadNextTask();
+        market.sendResult(9, "whatever");
+        market.loadNextTask();
+        market.sendResult(10, "whatever");
+        vm.stopPrank();
+
+        (uint256 requested6,
+            uint256 assigned6,
+            uint256 done6,
+            uint256 rewards6
+        ) = market.agentTotals(agent_6);
+        assertEq(assigned5, 2, "Agent 6 should have 2 tasks assigned");
+        assertEq(done5, 2, "Agent 6 should have 2 tasks done");
+        
+        assertEq(market.unassignedTasksLength(), 0, "There should be no unassigned tasks");
+
+        (uint256 id,                  // unique task ID 
+        uint256 parentTaskId,        // parent task ID - set only for multitasks
+        uint256 contextId,           // used in chat to group tasks
+        uint256 blockNumber,        // block.number// who created the task
+        uint256 reward_1,             // reward for fulfilling the task
+        uint256 childTokenId,
+        uint256 tasksToAssign,
+        uint256 maxRepeatedPerAgent,
+        address requester,
+        address agentId,             // the assigned agent 
+        address childIpId,
+        bytes32 topic,               // e.g. "chat"
+        bool isMultiTask,
+        bool isDeleted, // marks task as already assigned (in case of multitask - all instanaces were assigned)
+        string memory payload)             // arbitrary JSON or IPFS/Arweave txId?)
+        = market.allTasks(0);
+        assertEq(isDeleted, true, "Task should be deleted");
     }
 
-    function testRegisterTaskSkip() public {
+
+    function testRegisterTask() public {
         IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
 
         vm.startPrank(agent_1);
@@ -237,47 +310,81 @@ contract ClaraMarketTest is Test {
         uint256 expectedTokenId = agentNft.nextTokenId();
         address expectedIpId = IP_ASSET_REGISTRY.ipId(block.chainid, address(agentNft), expectedTokenId);
         uint256 expectedTaskId = market.tasksCounter();
-        console.log("expectedTaskId", expectedTaskId);
-        console.log("expectedIpId", expectedIpId);
-        console.log("expectedChildTokenId", expectedTokenId);
-        console.log("block.number", block.number);
-        console.log("block.timestamp", block.timestamp);
-        
-        vm.expectEmit(true, true, true, false); // TODO: fix checkData
-        emit TaskAssigned(agent_2, agent_1,  expectedTaskId, MarketLib.Task({
-            id: expectedTaskId,
-            contextId: expectedTaskId,
-            timestamp: block.timestamp,
-            blockNumber: block.number,
-            reward: 50 ether, // cause that's the assigned agent's fee
-            requester: agent_2,
-            agentId: agent_1,
-            matchingStrategy: "broadcast",
-            payload: "task payload",
-            topic: "chat",
-            childTokenId: expectedTokenId,
-            childIpId: expectedIpId,
-            tasksToAssign: 1,
-            tasksAssigned: 1,
-            maxRepeatedPerAgent: 0
-        }));
-
+         
         uint256 reward = 100 ether;
         market.registerTask(
             reward,
             0,
             "chat",
-            "broadcast",
             "task payload"
         );
+
+        vm.startPrank(agent_1);
+        vm.expectEmit(true, true, true, false); // TODO: fix checkData
+        emit TaskAssigned(agent_2, agent_1,  expectedTaskId, MarketLib.Task({
+            id: expectedTaskId,
+            contextId: expectedTaskId,
+            blockNumber: block.number,
+            reward: 50 ether, // cause that's the assigned agent's fee
+            requester: agent_2,
+            agentId: agent_1,
+            payload: "task payload",
+            topic: "chat",
+            childTokenId: expectedTokenId,
+            childIpId: expectedIpId,
+            tasksToAssign: 0,
+            maxRepeatedPerAgent: 0,
+            parentTaskId: 0,
+            isMultiTask: false,
+            isDeleted: false
+        }));
+        market.loadNextTask();
+        vm.stopPrank();
 
         uint256 marketBalance = revToken.balanceOf(address(market));
         assertEq(marketBalance, reward, "Market contract should hold the reward");
 
         vm.stopPrank();
     }
+
+    function testLoadTwoTasksInARow() public {
+        IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+
+        vm.startPrank(agent_1);
+        market.registerAgentProfile(50, "chat", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        market.registerAgentProfile(10, "chat", "another agent");
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        revToken.approve(address(market), 500 ether);
+        uint256 reward = 100 ether;
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "task payload"
+        );
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "task payloa2"
+        );
+
+        vm.startPrank(agent_1);
+        market.loadNextTask();
+        uint256 marketBalance = revToken.balanceOf(address(market));
+        assertEq(marketBalance, reward * 2, "Market contract should hold the reward");
+
+        vm.expectPartialRevert(PreviousTaskNotSentBack.selector);
+        market.loadNextTask();
+        vm.stopPrank();
+    }
     
-    function testSendResultSkip() public {
+    function testSendResul() public {
         vm.startPrank(agent_1);
         market.registerAgentProfile(100 ether, "chat", "metadataA");
         vm.stopPrank();
@@ -295,13 +402,14 @@ contract ClaraMarketTest is Test {
             rewardAmount,
             0,
             "chat",
-            "broadcast",
             "someTaskPayload"
         );
 
         vm.stopPrank();
 
         vm.startPrank(agent_1);
+        market.loadNextTask();
+        
         uint256 assignedTaskId = 1;
 
         string memory resultJSON = "{\"status\":\"done\"}";

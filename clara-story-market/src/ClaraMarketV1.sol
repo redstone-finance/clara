@@ -205,7 +205,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             id: taskId,
             parentTaskId: 0,
             contextId: _contextId == 0 ? taskId : _contextId,
-            timestamp: block.timestamp,
             blockNumber: block.number,
             reward: _reward,
             requester: _msgSender(),
@@ -215,7 +214,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             childTokenId: 0,
             childIpId: ZERO_ADDRESS,
             tasksToAssign: 1,
-            tasksAssigned: 0,
             maxRepeatedPerAgent: 1,
             isMultiTask: false,
             isDeleted: false
@@ -241,13 +239,11 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         _assertTopic(_topic);
 
         agentTotals[_msgSender()].requested += _tasksCount; // not sure about this
-
         
         MarketLib.Task memory newTask = MarketLib.Task({
             id: 0,
             parentTaskId: tasksCounter++,
             contextId: 0,
-            timestamp: block.timestamp,
             blockNumber: block.number,
             reward: _maxRewardPerTask,
             requester: _msgSender(),
@@ -257,7 +253,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             childTokenId: 0,
             childIpId: ZERO_ADDRESS,
             tasksToAssign: _tasksCount,
-            tasksAssigned: 0,
             maxRepeatedPerAgent: _maxRepeatedTasksPerAgent,
             isMultiTask: true,
             isDeleted: false
@@ -294,17 +289,14 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                     || (task.isMultiTask 
                         && multiTasksAssigned[sender][task.parentTaskId] < task.maxRepeatedPerAgent))
             ) {
+                allTasks[i].tasksToAssign--; // note: "task" is a deep copy
                 _loadTask(
                     sender,
                     task,
                     agent.fee);
                 unassignedTasksLength--;
-                if (task.isMultiTask) {
-                    if (++multiTasksAssigned[sender][task.parentTaskId] == task.maxRepeatedPerAgent) {
-                        task.isDeleted = true;
-                    } 
-                } else {
-                    task.isDeleted = true;
+                if (allTasks[i].tasksToAssign == 0) {
+                    allTasks[i].isDeleted = true;
                 }
                 return;
             }
@@ -370,15 +362,12 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         originalTask.reward = agentFee;
         originalTask.agentId = _agentId;
 
-        originalTask.tasksAssigned++;
-        
         MarketLib.Task memory finalTask =
             originalTask.isMultiTask 
                 ?  MarketLib.Task({
                 id: tasksCounter++,
                 parentTaskId: originalTask.parentTaskId,
                 contextId: originalTask.contextId,
-                timestamp: originalTask.timestamp,
                 blockNumber: originalTask.blockNumber,
                 reward: originalTask.reward,
                 requester: originalTask.requester,
@@ -388,7 +377,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                 childTokenId: 0,
                 childIpId: ZERO_ADDRESS,
                 tasksToAssign: originalTask.tasksToAssign,
-                tasksAssigned: originalTask.tasksAssigned,
                 maxRepeatedPerAgent: originalTask.maxRepeatedPerAgent,
                 isMultiTask: true,
                 isDeleted: false
@@ -426,7 +414,10 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         finalTask.childTokenId = childTokenId;
 
         agentInbox[_agentId] = finalTask;
-        agentTotals[_agentId].assigned += 1;
+        agentTotals[_agentId].assigned++;
+        if (finalTask.isMultiTask) {
+            multiTasksAssigned[_agentId][finalTask.parentTaskId]++;
+        }
 
         // transfer the NFT to the receiver so it owns the child IPA
         AGENT_NFT.transferFrom(address(this), _agentId, childTokenId);
