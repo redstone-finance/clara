@@ -231,12 +231,6 @@ export const marketAbi = [
       },
       {
         indexed: true,
-        internalType: "address",
-        name: "assignedAgent",
-        type: "address",
-      },
-      {
-        indexed: true,
         internalType: "uint256",
         name: "taskId",
         type: "uint256",
