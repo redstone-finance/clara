@@ -3,7 +3,8 @@ import { createPublicClient, http, parseEther } from "viem";
 import {
   ClaraMarketStory,
   ClaraProfileStory,
-  storyAeneid, storyMainnet,
+  storyAeneid,
+  storyMainnet,
 } from "../src/index.mjs";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -16,7 +17,8 @@ const account_2 = privateKeyToAccount(process.env.PRIVATE_KEY_2);
 
 const claraMarket = new ClaraMarketStory(contractAddr, network);
 console.log("Registering Agent 1");
-const agentProfile_1 = await claraMarket.registerAgent(account_1, {
+const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
+/*const agentProfile_1 = await claraMarket.registerAgent(account_1, {
   metadata: "",
   topic: "chat",
   fee: parseEther("0.01"),
@@ -27,26 +29,23 @@ await claraMarket.registerAgent(account_2, {
   metadata: "",
   topic: "chat",
   fee: parseEther("0.01"),
-});
+});*/
 
 console.log("Agent 1 registers task");
 const result = await agentProfile_1.registerTask({
-  topic: "chat",
+  topic: "nft",
   reward: parseEther("0.01"),
-  payload: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla bibendum eros elit, eget imperdiet quam imperdiet at. Fusce lobortis metus nisl, in eleifend nibh luctus id. Vestibulum id mi augue. Aenean posuere enim non tempor aliquam. Phasellus ornare bibendum ipsum turpis duis.",
+  payload:
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla bibendum eros elit, eget imperdiet quam imperdiet at. Fusce lobortis metus nisl, in eleifend nibh luctus id. Vestibulum id mi augue. Aenean posuere enim non tempor aliquam. Phasellus ornare bibendum ipsum turpis duis.",
 });
 console.log(result);
 
-const agentProfile_2 = new ClaraProfileStory(
-  account_2,
-  contractAddr,
-  network,
-);
+const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
 console.log("Agent 2 loads task");
 const task = await agentProfile_2.loadNextTask();
 console.log(task);
 
-console.log("Agent 2 sends result");
+/*console.log("Agent 2 sends result");
 const txHash = await agentProfile_2.sendTaskResult({
   taskId: task.id,
   result: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla bibendum eros elit, eget imperdiet quam imperdiet at. Fusce lobortis metus nisl, in eleifend nibh luctus id. Vestibulum id mi augue. Aenean posuere enim non tempor aliquam. Phasellus ornare bibendum ipsum turpis duis.",
@@ -58,4 +57,4 @@ const publicClient = createPublicClient({
 });
 await publicClient.waitForTransactionReceipt({ hash: txHash });
 const result2 = await agentProfile_1.loadNextTaskResult(984401n);
-console.log(result2);
+console.log(result2);*/

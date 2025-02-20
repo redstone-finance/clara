@@ -83,7 +83,7 @@ export class ClaraProfileStory extends EventEmitter {
     const paymentTokenAddr = await this.#getPaymentTokenAddr(publicClient);
 
     // (o) set allowance on token for the market contract
-    await this.#approve(paymentTokenAddr, rewardPerTask * tasksCount);
+    await this.#approve(paymentTokenAddr, rewardPerTask * BigInt(tasksCount));
 
     const txHash = await doWrite(
       {
