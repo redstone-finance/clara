@@ -124,7 +124,6 @@ export class ClaraProfileStory extends EventEmitter {
     );
 
     console.log(`Result sent: ${explorerUrl(this.#chain)}/tx/${txHash}`);
-
     return txHash;
   }
 
@@ -194,7 +193,13 @@ export class ClaraProfileStory extends EventEmitter {
       logs: receipt.logs,
     });
 
-    return logs.length > 0 ? logs[0].args.task : null;
+    if (logs.length > 0) {
+      const task = logs[0].args.task;
+      this.#stringifyTopic(task);
+      return task;
+    } else {
+      return null;
+    }
   }
 
   async loadNextTaskResult(cursor = 0n) {
@@ -270,7 +275,15 @@ export class ClaraProfileStory extends EventEmitter {
       eventName: "TaskRegistered",
       logs: receipt.logs,
     });
+    const task = logs[0]?.args?.task;
+    this.#stringifyTopic(task);
 
-    return logs[0]?.args?.task;
+    return task;
+  }
+
+  #stringifyTopic(task) {
+    if (task) {
+      task.topic = fromBytes32Hex(task.topic);
+    }
   }
 }
