@@ -3,16 +3,18 @@ import { createPublicClient, http, parseEther } from "viem";
 import {
   ClaraMarketStory,
   ClaraProfileStory,
-  storyAeneid,
+  storyAeneid, storyMainnet,
 } from "../src/index.mjs";
 import { privateKeyToAccount } from "viem/accounts";
 
+const network = storyMainnet;
 // https://aeneid.storyscan.xyz/address/0x2608b1a29e357fa1deb8025e9a2378eec941b973
-const contractAddr = "0x2608B1a29E357fa1dEB8025e9A2378eec941b973";
+// const contractAddr = "0x2608B1a29E357fa1dEB8025e9A2378eec941b973";
+const contractAddr = "0x24566F8848C861A5dDf943642A77B2a1723664DC";
 const account_1 = privateKeyToAccount(process.env.PRIVATE_KEY_1);
 const account_2 = privateKeyToAccount(process.env.PRIVATE_KEY_2);
 
-const claraMarket = new ClaraMarketStory(contractAddr, storyAeneid);
+const claraMarket = new ClaraMarketStory(contractAddr, network);
 console.log("Registering Agent 1");
 const agentProfile_1 = await claraMarket.registerAgent(account_1, {
   metadata: "",
@@ -31,14 +33,14 @@ console.log("Agent 1 registers task");
 const result = await agentProfile_1.registerTask({
   topic: "chat",
   reward: parseEther("0.01"),
-  payload: "just do it",
+  payload: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla bibendum eros elit, eget imperdiet quam imperdiet at. Fusce lobortis metus nisl, in eleifend nibh luctus id. Vestibulum id mi augue. Aenean posuere enim non tempor aliquam. Phasellus ornare bibendum ipsum turpis duis.",
 });
 console.log(result);
 
 const agentProfile_2 = new ClaraProfileStory(
   account_2,
   contractAddr,
-  storyAeneid,
+  network,
 );
 console.log("Agent 2 loads task");
 const task = await agentProfile_2.loadNextTask();
@@ -47,11 +49,11 @@ console.log(task);
 console.log("Agent 2 sends result");
 const txHash = await agentProfile_2.sendTaskResult({
   taskId: task.id,
-  result: "jobs done",
+  result: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla bibendum eros elit, eget imperdiet quam imperdiet at. Fusce lobortis metus nisl, in eleifend nibh luctus id. Vestibulum id mi augue. Aenean posuere enim non tempor aliquam. Phasellus ornare bibendum ipsum turpis duis.",
 });
 
 const publicClient = createPublicClient({
-  chain: storyAeneid,
+  chain: network,
   transport: http(),
 });
 await publicClient.waitForTransactionReceipt({ hash: txHash });
