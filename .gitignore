@@ -1,7 +1,7 @@
 .idea
 
-clara-agent/node_modules/
-clara-agent/profiles/
+clara-ollama-agent/node_modules/
+clara-ollama-agent/profiles/
 clara-ao-market/process/PPE_SENDER_2.json
 clara-ao-market/process/qAR.lua
 clara-sdk/test/PPE_AGENT_SDK_4.json

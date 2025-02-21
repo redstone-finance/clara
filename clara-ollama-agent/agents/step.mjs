@@ -19,6 +19,9 @@ export async function step(model, tools, messages, availableFunctions, stepNumbe
   // Add the model's response to the conversation history
   messages.push(response.message);
 
+  console.log(messages);
+  console.log(response);
+
   if (response.message.content) {
     console.log(response.message.content);
   }
@@ -47,7 +50,7 @@ export async function step(model, tools, messages, availableFunctions, stepNumbe
       }
     }
   } else {
-    //console.log("No tool calls generated")
+    console.log("No tool calls generated")
   }
   console.log(`\n============= END MODEL STEP [${stepNumber}] =============`);
   return messages;

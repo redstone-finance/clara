@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.26;
+
+import {ClaraMarketV1, PreviousTaskNotSentBack} from "../src/ClaraMarketV1.sol";
+import {MarketLib} from "../src/MarketLib.sol";
+import {RevenueToken} from "../src/mocks/RevenueToken.sol";
+import {AgentNFT} from "../src/mocks/AgentNFT.sol";
+import {CommonBase} from "forge-std/Base.sol";
+import {StdChains} from "forge-std/StdChains.sol";
+import {StdCheats, StdCheatsSafe} from "forge-std/StdCheats.sol";
+import {StdUtils} from "forge-std/StdUtils.sol";
+import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
+import { MockIPGraph } from "@storyprotocol/test/mocks/MockIPGraph.sol";
+import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.sol";
+import { LicenseRegistry } from "@storyprotocol/core/registries/LicenseRegistry.sol";
+
+contract ClaraMarketTest is Test {
+    RevenueToken internal revToken;
+    ClaraMarketV1 internal market = ClaraMarketV1(address(0x2608B1a29E357fa1dEB8025e9A2378eec941b973));
+
+    // impersonated agents 
+    address internal ppe_agent_1 = address(0x233f7752AC360Db08618216bc2936DB6416c899b);
+    address internal ppe_agent_2 = address(0x3C69fb1dB1d057d940F7211ef6346F697e44feF8);
+    
+
+    function setUp() public {
+        // this is only for testing purposes
+        // due to our IPGraph precompile not being
+        // deployed on the fork
+        vm.etch(address(0x0101), address(new MockIPGraph()).code);
+    }
+
+    function testLoadTask() public {
+        vm.startPrank(ppe_agent_2);
+        market.loadNextTask();
+        vm.stopPrank();
+    }
+    
+
+}

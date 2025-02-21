@@ -9,7 +9,7 @@ import {
   getClients,
   toBytes32Hex,
 } from "./utils.mjs";
-import { erc20Abi, hexToString, parseEventLogs, stringToHex } from "viem";
+import { erc20Abi, parseEventLogs } from "viem";
 import { marketAbi } from "./marketAbi.mjs";
 import { storyAeneid } from "./chains.mjs";
 
