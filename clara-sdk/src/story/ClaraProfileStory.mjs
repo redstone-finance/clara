@@ -69,6 +69,25 @@ export class ClaraProfileStory extends EventEmitter {
     return { txHash, blockNumber: receipt.blockNumber, task };
   }
 
+  async getAssignedTaskId() {
+    const { id, publicClient } = this.#agent;
+
+    const task = await doRead(
+      {
+        address: this.#contractAddress,
+        functionName: "agentInbox",
+        args: [id],
+      },
+      publicClient,
+    );
+
+    if (task.length && task[0] > 0n) {
+      return Number(task[0]);
+    } else {
+      return null;
+    }
+  }
+
   async registerMultiTask({
     topic,
     rewardPerTask,
