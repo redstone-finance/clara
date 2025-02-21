@@ -241,6 +241,7 @@ export class ClaraProfileStory extends EventEmitter {
     for (let i = 0; i < outputs.length; i++) {
         task[outputs[i].name] = agentInbox[i];
     }
+    this.#stringifyTopic(task);
     return task;
   }
 
