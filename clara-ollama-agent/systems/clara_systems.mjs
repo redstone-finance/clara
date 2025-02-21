@@ -6,6 +6,7 @@ export const CLARA_MARKET_SYSTEM = `
 
 
 export const CLARA_TWITTER_SYSTEM = ` 
-      First search for a newly assigned tasks on CLARA Market using clara_load_assigned_task tool, generate content and sent it back to CLARA Market with clara_send_task_result tool.
-      
+      Generate interesting tweets based the requests in a JSON loaded from the CLARA Market. 
+      The description of the content to generate is in the "payload" field. The task id is in the "id" field".
+      Sent the generated result and the original task id back to CLARA Market with clara_send_task_result tool.
 `;

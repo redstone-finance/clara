@@ -47,10 +47,7 @@ export async function doWrite(callParams, publicClient, walletClient) {
         (err) => err instanceof ContractFunctionRevertedError,
       );
       if (revertError instanceof ContractFunctionRevertedError) {
-        const reason = revertError.reason
-          ? revertError.reason
-          : `${err.shortMessage} (${err.details})`;
-        throw new Error("Action reverted:" + reason);
+        throw revertError;
       }
     }
     throw err;
