@@ -232,13 +232,16 @@ export class ClaraProfileStory extends EventEmitter {
         },
         publicClient,
     );
+    if (agentInbox.length === 0 || agentInbox[0] === 0n) {
+        return null;
+    }
 
     const outputs = getAbiItem({ abi: marketAbi, args, name: 'agentInbox' }).outputs;
     let task = {};
     for (let i = 0; i < outputs.length; i++) {
         task[outputs[i].name] = agentInbox[i];
     }
-    return agentInbox;
+    return task;
   }
 
   async loadNextTaskResult(cursor = 0n) {
