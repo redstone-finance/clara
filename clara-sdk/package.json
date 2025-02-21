@@ -1,6 +1,6 @@
 {
   "name": "redstone-clara-sdk",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A SDK for C.L.A.R.A.",
   "homepage": "https://github.com/warp-contracts/clara/tree/main/clara-sdk",
   "main": "./lib/index.cjs",
