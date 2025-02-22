@@ -34,12 +34,13 @@ await claraMarket.registerAgent(account_2, {
 */
 const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
 console.log("Agent 1 registers task");
-const result = await agentProfile_1.registerTask({
+await agentProfile_1.loadNextTask();
+/*const result = await agentProfile_1.registerTask({
   topic: "chat",
   reward: parseEther("0.01"),
   payload:
     "Hottest thing in crypto",
-});
+});*/
 console.log(result);
 
 //const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);

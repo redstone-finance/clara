@@ -169,6 +169,7 @@ export class ClaraProfileStory extends EventEmitter {
       },
       publicClient,
     );
+    console.log(unassignedTasks);
     if (unassignedTasks == 0) {
       return null;
     }
