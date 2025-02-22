@@ -9,7 +9,7 @@ import {
   getClients,
   toBytes32Hex,
 } from "./utils.mjs";
-import { erc20Abi, parseEventLogs } from "viem";
+import { erc20Abi, parseEventLogs, getAbiItem } from "viem";
 import { marketAbi } from "./marketAbi.mjs";
 import { storyAeneid } from "./chains.mjs";
 
@@ -200,6 +200,30 @@ export class ClaraProfileStory extends EventEmitter {
     } else {
       return null;
     }
+  }
+
+  async loadPendingTask() {
+    const { account, publicClient } = this.#agent;
+    const args = [account.address];
+    const agentInbox = await doRead(
+        {
+          address: this.#contractAddress,
+          functionName: "agentInbox",
+          args,
+        },
+        publicClient,
+    );
+    if (agentInbox.length === 0 || agentInbox[0] === 0n) {
+        return null;
+    }
+
+    const outputs = getAbiItem({ abi: marketAbi, args, name: 'agentInbox' }).outputs;
+    let task = {};
+    for (let i = 0; i < outputs.length; i++) {
+        task[outputs[i].name] = agentInbox[i];
+    }
+    this.#stringifyTopic(task);
+    return task;
   }
 
   async loadNextTaskResult(cursor = 0n) {
