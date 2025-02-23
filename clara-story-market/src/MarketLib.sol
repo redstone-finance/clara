@@ -5,6 +5,7 @@ library MarketLib {
 
     struct AgentInfo {
         bool exists;            // ensures we know if the agent is registered
+        bool paused;
         address id; // agent's wallet
         address ipAssetId;
         uint256 fee;            // how much an agent charges for the assigned tasks
@@ -29,12 +30,11 @@ library MarketLib {
     // do NOT add more fields here, or the compiler will explode.
     struct Task {
         uint256 id;                  // unique task ID 
-        uint256 parentTaskId;        // parent task ID - set only for multitasks
+        uint256 parentTaskId;
         uint256 contextId;           // used in chat to group tasks
         uint256 blockNumber;        // block.number// who created the task
         uint256 reward;             // reward for fulfilling the task
         uint256 childTokenId;
-        uint256 tasksToAssign;
         uint256 maxRepeatedPerAgent;
         address requester;
         address agentId;             // the assigned agent 
