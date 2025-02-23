@@ -105,6 +105,7 @@ contract ClaraMarketTest is Test {
         
         vm.stopPrank();
         (   bool exists,            // ensures we know if the agent is registered
+            bool paused,
             address id, // agent's wallet
             address ipAssetId,
             uint256 storedFee,            // how much an agent charges for the assigned tasks
@@ -115,6 +116,7 @@ contract ClaraMarketTest is Test {
         ) = market.agents(agent_1);
 
         assertTrue(exists, "Agent should exist after registration");
+        assertFalse(paused, "Agent should not be paused");
         assertEq(id, agent_1, "Agent address mismatch");
         assertEq(storedTopic, "chat", "Agent topic mismatch");
         assertEq(storedFee, 50 ether, "Agent fee mismatch");
@@ -449,6 +451,7 @@ contract ClaraMarketTest is Test {
         vm.stopPrank();
 
         (bool exists,            // ensures we know if the agent is registered
+        bool paused,
         address id, // agent's wallet
         address ipAssetId,
         uint256 fee,            // how much an agent charges for the assigned tasks

@@ -27,6 +27,7 @@ error TaskNotFound(uint256 taskId);
 error ValueNegative();
 error NoAgentsMatchedForTask();
 error PreviousTaskNotSentBack(uint256 taskId);
+error AgentPaused(address agent);
 
 /**
  * @title ClaraMarketV1
@@ -183,6 +184,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         _registerAgent();
         agents[_msgSender()] = MarketLib.AgentInfo({
             exists: true,
+            paused: false,
             id: _msgSender(),
             topic: _topic,
             fee: _fee,
@@ -198,10 +200,19 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     function updateAgentFee(uint256 _fee)
     external
     {
-        require(agents[_msgSender()].exists == true, AgentNotRegistered(_msgSender()));
+        _assertAgentRegistered();
         require(_fee >= 0, ValueNegative());
 
         agents[_msgSender()].fee = _fee;
+        emit AgentUpdated(_msgSender(), agents[_msgSender()]);
+    }
+
+    function updateAgentPaused(bool paused)
+    external
+    {
+        _assertAgentRegistered();
+        
+        agents[_msgSender()].paused = paused;
         emit AgentUpdated(_msgSender(), agents[_msgSender()]);
     }
 
@@ -224,6 +235,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     external
     {
         _assertAgentRegistered();
+        _assertAgentNotPaused();
         require(_reward >= 0, ValueNegative());
         _assertTopic(_topic);
 
@@ -265,6 +277,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     external
     {
         _assertAgentRegistered();
+        _assertAgentNotPaused();
         require(_maxRewardPerTask >= 0, ValueNegative());
         _assertTopic(_topic);
 
@@ -303,6 +316,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     external
     {
         _assertAgentRegistered();
+        _assertAgentNotPaused();
         address sender = _msgSender();
         if (unassignedTasksLength[agents[sender].topic] == 0) {
             return;
@@ -452,6 +466,11 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         return allTasks.length;
     }
 
+    function isAgentPaused() external view returns (bool) {
+        _assertAgentRegistered();
+        return agents[_msgSender()].paused;
+    }
+
     function _agentInboxCount(address _agentId) private view returns (uint256) {
         MarketLib.AgentTotals memory tot = agentTotals[_agentId];
         // approximate:
@@ -474,6 +493,10 @@ contract ClaraMarketV1 is Context, ERC721Holder {
 
     function _assertAgentRegistered() internal view {
         require(agents[_msgSender()].exists, AgentNotRegistered(_msgSender()));
+    }
+
+    function _assertAgentNotPaused() internal view {
+        require(agents[_msgSender()].paused == false, AgentPaused(_msgSender()));
     }
 
 }

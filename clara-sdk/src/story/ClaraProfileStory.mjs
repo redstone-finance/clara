@@ -9,9 +9,10 @@ import {
   getClients,
   toBytes32Hex,
 } from "./utils.mjs";
-import { erc20Abi, parseEventLogs, getAbiItem } from "viem";
+import {erc20Abi, parseEventLogs, getAbiItem, formatEther} from "viem";
 import { marketAbi } from "./marketAbi.mjs";
 import { storyAeneid } from "./chains.mjs";
+import {wipAbi} from "./wipAbi.mjs";
 
 export class ClaraProfileStory extends EventEmitter {
   #agent;
@@ -160,16 +161,20 @@ export class ClaraProfileStory extends EventEmitter {
   }
 
   async loadNextTask() {
-    const { account, publicClient, walletClient } = this.#agent;
+    const { id, account, publicClient, walletClient } = this.#agent;
+    if (await this.isAgentPaused()) {
+      console.log("Agent paused, returning");
+      return;
+    }
 
     const unassignedTasks = await doRead(
       {
         address: this.#contractAddress,
-        functionName: "unassignedTasksLength",
+        functionName: "unassignedTasks",
+        account: id,
       },
       publicClient,
     );
-    console.log(unassignedTasks);
     if (unassignedTasks == 0) {
       return null;
     }
@@ -178,7 +183,6 @@ export class ClaraProfileStory extends EventEmitter {
       {
         address: this.#contractAddress,
         functionName: "loadNextTask",
-        args: [],
         account,
       },
       publicClient,
@@ -207,24 +211,114 @@ export class ClaraProfileStory extends EventEmitter {
     const { account, publicClient } = this.#agent;
     const args = [account.address];
     const agentInbox = await doRead(
-        {
-          address: this.#contractAddress,
-          functionName: "agentInbox",
-          args,
-        },
-        publicClient,
+      {
+        address: this.#contractAddress,
+        functionName: "agentInbox",
+        args,
+      },
+      publicClient,
     );
     if (agentInbox.length === 0 || agentInbox[0] === 0n) {
-        return null;
+      return null;
     }
 
-    const outputs = getAbiItem({ abi: marketAbi, args, name: 'agentInbox' }).outputs;
+    const outputs = getAbiItem({
+      abi: marketAbi,
+      args,
+      name: "agentInbox",
+    }).outputs;
     let task = {};
     for (let i = 0; i < outputs.length; i++) {
-        task[outputs[i].name] = agentInbox[i];
+      task[outputs[i].name] = agentInbox[i];
     }
     this.#stringifyTopic(task);
     return task;
+  }
+
+  async withdrawRewards() {
+    const { id, account, publicClient, walletClient } = this.#agent;
+    const txHash = await doWrite(
+      {
+        address: this.#contractAddress,
+        functionName: "withdraw",
+        args: [],
+        account,
+      },
+      publicClient,
+      walletClient,
+    );
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    });
+
+    const logs = parseEventLogs({
+      abi: marketAbi,
+      eventName: "RewardWithdrawn",
+      logs: receipt.logs,
+    });
+
+    if (logs.length > 0) {
+      const amount = logs[0].args.amount;
+      console.log(`${formatEther(amount)} transferred back to ${id}`);
+      return amount;
+    } else {
+      return null;
+    }
+  }
+
+  async isAgentPaused() {
+    const { id, publicClient } = this.#agent;
+    const isAgentPaused = await doRead(
+      {
+        address: this.#contractAddress,
+        functionName: "isAgentPaused",
+        account: id,
+      },
+      publicClient,
+    );
+    return isAgentPaused;
+  }
+
+  async updateAgentPaused(isPaused) {
+    const { account, publicClient, walletClient } = this.#agent;
+    const txHash = await doWrite(
+      {
+        address: this.#contractAddress,
+        functionName: "updateAgentPaused",
+        args: [isPaused],
+        account,
+      },
+      publicClient,
+      walletClient
+    );
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    });
+
+    return receipt;
+  }
+
+  async mintWIPs(amount) {
+    const { account, publicClient, walletClient } = this.#agent;
+    const paymentTokenAddr = await this.#getPaymentTokenAddr(publicClient);
+
+    const txHash = await doWrite(
+      {
+        abi: wipAbi,
+        address: paymentTokenAddr,
+        functionName: "deposit",
+        value: amount,
+        account
+      },
+      publicClient,
+      walletClient
+    );
+
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    });
+
+    return receipt;
   }
 
   async loadNextTaskResult(cursor = 0n) {

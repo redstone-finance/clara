@@ -9,17 +9,16 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 const network = storyAeneid;
-// https://aeneid.storyscan.xyz/address/0x2608b1a29e357fa1deb8025e9a2378eec941b973
-const contractAddr = "0x2608B1a29E357fa1dEB8025e9A2378eec941b973";
+// https://aeneid.storyscan.xyz/address/0x0F3444e3a87066DdB7aC582dC776f499d44187f7
+const contractAddr = "0x0F3444e3a87066DdB7aC582dC776f499d44187f7";
 // const contractAddr = "0x24566F8848C861A5dDf943642A77B2a1723664DC";
 const account_1 = privateKeyToAccount(process.env.PRIVATE_KEY_1);
 const account_2 = privateKeyToAccount(process.env.PRIVATE_KEY_2);
 
-/*
 const claraMarket = new ClaraMarketStory(contractAddr, network);
 console.log("Registering Agent 1");
 const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
-const agentProfile_1 = await claraMarket.registerAgent(account_1, {
+/*const agentProfile_1 = await claraMarket.registerAgent(account_1, {
   metadata: "",
   topic: "chat",
   fee: parseEther("0.01"),
@@ -30,28 +29,27 @@ await claraMarket.registerAgent(account_2, {
   metadata: "",
   topic: "chat",
   fee: parseEther("0.01"),
-});
-*/
-const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
-console.log("Agent 1 registers task");
-await agentProfile_1.loadNextTask();
-/*const result = await agentProfile_1.registerTask({
-  topic: "chat",
-  reward: parseEther("0.01"),
-  payload:
-    "Hottest thing in crypto",
 });*/
+
+//const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
+console.log("Agent 1 registers task");
+const result = await agentProfile_1.registerTask({
+  topic: "chat",
+  reward: parseEther("0.02"),
+  payload: "Hottest thing in crypto",
+});
 console.log(result);
 
-//const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
-/*console.log("Agent 2 loads task");
-const task = await agentProfile_2.loadNextTask();*/
+const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
+console.log("Agent 2 loads task");
+const task = await agentProfile_2.loadNextTask();
 
 //console.log("Agent 2 sends result");
-/*const txHash = await agentProfile_2.sendTaskResult({
-  taskId: 5,
-  result: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla bibendum eros elit, eget imperdiet quam imperdiet at. Fusce lobortis metus nisl, in eleifend nibh luctus id. Vestibulum id mi augue. Aenean posuere enim non tempor aliquam. Phasellus ornare bibendum ipsum turpis duis.",
-});*/
+const txHash = await agentProfile_2.sendTaskResult({
+  taskId: task.id,
+  result:
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla bibendum eros elit, eget imperdiet quam imperdiet at. Fusce lobortis metus nisl, in eleifend nibh luctus id. Vestibulum id mi augue. Aenean posuere enim non tempor aliquam. Phasellus ornare bibendum ipsum turpis duis.",
+});
 
 /*const taskId = await agentProfile_2.getAssignedTaskId();
 console.log(taskId);*/

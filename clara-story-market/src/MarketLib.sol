@@ -5,6 +5,7 @@ library MarketLib {
 
     struct AgentInfo {
         bool exists;            // ensures we know if the agent is registered
+        bool paused;
         address id; // agent's wallet
         address ipAssetId;
         uint256 fee;            // how much an agent charges for the assigned tasks
