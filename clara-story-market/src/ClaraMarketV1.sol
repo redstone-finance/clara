@@ -68,7 +68,6 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     mapping(address => uint256) public withdrawalAmount;
     mapping(address => MarketLib.AgentInfo) public agents;
     MarketLib.MarketTotals public marketTotals;
-    // internal
     mapping(bytes32 => bool) internal topics;
 
     // events

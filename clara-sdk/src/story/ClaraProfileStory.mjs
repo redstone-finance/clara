@@ -9,10 +9,10 @@ import {
   getClients,
   toBytes32Hex,
 } from "./utils.mjs";
-import {erc20Abi, parseEventLogs, getAbiItem, formatEther} from "viem";
+import { erc20Abi, parseEventLogs, getAbiItem, formatEther } from "viem";
 import { marketAbi } from "./marketAbi.mjs";
 import { storyAeneid } from "./chains.mjs";
-import {wipAbi} from "./wipAbi.mjs";
+import { wipAbi } from "./wipAbi.mjs";
 
 export class ClaraProfileStory extends EventEmitter {
   #agent;
@@ -130,7 +130,7 @@ export class ClaraProfileStory extends EventEmitter {
 
   async updateFee(newFee) {
     const { account, publicClient, walletClient } = this.#agent;
-    const txId = await doWrite(
+    const txHash = await doWrite(
       {
         address: this.#contractAddress,
         functionName: "updateAgentFee",
@@ -141,12 +141,12 @@ export class ClaraProfileStory extends EventEmitter {
       walletClient,
     );
 
-    console.log(`Fee updated: ${explorerUrl(this.#chain)}/tx/${txId}`);
+    console.log(`Fee updated: ${explorerUrl(this.#chain)}/tx/${txHash}`);
   }
 
   async updateTopic(newTopic) {
     const { account, publicClient, walletClient } = this.#agent;
-    const txId = await doWrite(
+    const txHash = await doWrite(
       {
         address: this.#contractAddress,
         functionName: "updateAgentTopic",
@@ -157,7 +157,7 @@ export class ClaraProfileStory extends EventEmitter {
       walletClient,
     );
 
-    console.log(`Fee updated: ${explorerUrl(this.#chain)}/tx/${txId}`);
+    console.log(`Fee updated: ${explorerUrl(this.#chain)}/tx/${txHash}`);
   }
 
   async loadNextTask() {
@@ -289,11 +289,15 @@ export class ClaraProfileStory extends EventEmitter {
         account,
       },
       publicClient,
-      walletClient
+      walletClient,
     );
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: txHash,
     });
+
+    console.log(
+      `Agent Paused updated: ${explorerUrl(this.#chain)}/tx/${txHash}`,
+    );
 
     return receipt;
   }
@@ -308,11 +312,13 @@ export class ClaraProfileStory extends EventEmitter {
         address: paymentTokenAddr,
         functionName: "deposit",
         value: amount,
-        account
+        account,
       },
       publicClient,
-      walletClient
+      walletClient,
     );
+
+    console.log(`WIPs minted: ${explorerUrl(this.#chain)}/tx/${txHash}`);
 
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: txHash,
@@ -358,7 +364,7 @@ export class ClaraProfileStory extends EventEmitter {
 
   async #approve(paymentTokenAddr, amount) {
     const { account, publicClient, walletClient } = this.#agent;
-    const allowanceTxId = await doWrite(
+    const allowanceTxHash = await doWrite(
       {
         abi: erc20Abi,
         address: paymentTokenAddr,
@@ -370,10 +376,10 @@ export class ClaraProfileStory extends EventEmitter {
       walletClient,
     );
     console.log(
-      `Allowance set: ${explorerUrl(this.#chain)}/tx/${allowanceTxId}`,
+      `Allowance set: ${explorerUrl(this.#chain)}/tx/${allowanceTxHash}`,
     );
 
-    await publicClient.waitForTransactionReceipt({ hash: allowanceTxId });
+    await publicClient.waitForTransactionReceipt({ hash: allowanceTxHash });
   }
 
   async #getPaymentTokenAddr(publicClient) {
