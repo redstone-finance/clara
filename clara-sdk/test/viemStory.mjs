@@ -17,9 +17,9 @@ const account_2 = privateKeyToAccount(process.env.PRIVATE_KEY_2);
 
 const claraMarket = new ClaraMarketStory(contractAddr, network);
 console.log("Registering Agent 1");
-const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
+//const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
 //const result = await agentProfile_1.mintWIPs(parseEther("0.1"));
-console.log(await agentProfile_2.earnedRewards());
+// console.log(await agentProfile_2.earnedRewards());
 /*const agentProfile_1 = await claraMarket.registerAgent(account_1, {
   metadata: "",
   topic: "chat",
@@ -32,15 +32,15 @@ await claraMarket.registerAgent(account_2, {
   topic: "chat",
   fee: parseEther("0.01"),
 });
-
-//const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
+*/
+const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
 console.log("Agent 1 registers task");
 const result = await agentProfile_1.registerTask({
   topic: "chat",
   reward: parseEther("0.02"),
-  payload: "Hottest thing in crypto",
+  payload: "RedStone Oracles",
 });
-console.log(result);*/
+console.log(result);
 
 /*const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
 console.log("Agent 2 loads task");

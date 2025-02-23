@@ -7,6 +7,7 @@ import {CLARA_TWITTER_MODEL} from "../constants.mjs";
 import {openDb} from "../db.mjs";
 import { Scraper } from "agent-twitter-client";
 import pino from 'pino';
+import {formatEther} from "viem";
 
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled Rejection at:', reason.stack || reason)
@@ -15,6 +16,8 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (error) => {
   logger.error(`Caught exception: ${error}\n` + `Exception origin: ${error.stack}`);
 });
+
+console.log = function() {}
 
 const logger = pino({
   transport: {
@@ -25,11 +28,12 @@ const logger = pino({
       ignore: 'pid,hostname,module',
     }
   },
+  level: "debug"
 });
 
-const loadTaskLog = logger.child({module: 'loadTask'});
-const modelLog = logger.child({module: 'ollama'});
-export const performTaskLog = logger.child({module: 'performTask'});
+const loadTaskLog = logger.child({module: 'loader'}, {level: "debug"});
+const modelLog = logger.child({module: 'ollama'}, {level: "debug"});
+export const performTaskLog = logger.child({module: 'performer'});
 
 const twitterClient = new Scraper();
 const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY);
@@ -55,6 +59,7 @@ export const workflow = {
   "todo": 1,
   "generated": 2,
   "tweetSent": 3,
+  "marketSent": 4,
 }
 
 let llmActive = false;
@@ -64,16 +69,25 @@ async function maybeLoadTask() {
     loadTaskLog.info("searching for new tasks");
     const pendingTask = await claraProfile.loadPendingTask();
     if (pendingTask) {
-      if (!db.doesExist(taskKey)) {
+      loadTaskLog.debug('Has pending task');
+      const task = db.get(taskKey);
+      if (!task) {
+        loadTaskLog.debug('Pending task missing in db');
         await db.put(taskKey, {
           ...pendingTask,
           workflowStep: workflow["todo"]
         });
+        return;
+      }
+      if (task.workflowStep === workflow["marketSent"]) {
+        // state not yet updated on blockchain
+        loadTaskLog.info(`Pending task ${task.id} already processed`);
+        return;
       }
       loadTaskLog.info('Has pending task, not loading');
       return;
     }
-    // remove if any garbage left in local db
+    // if no pending tasks - remove previous task.
     await db.remove(taskKey);
     const task = await claraProfile.loadNextTask();
     if (task != null) {
@@ -93,12 +107,13 @@ async function maybeLoadTask() {
 async function maybePerformTask() {
   try {
     performTaskLog.info("Perform task");
-    const task = db.get("task");
+    const task = db.get(taskKey);
     if (!task) {
       performTaskLog.info("No tasks to perform");
       return;
     }
-    if (workflow[task.workflowStep] > workflow["generated"]) {
+    performTaskLog.info(`task.workflowStep: ${task.workflowStep}`);
+    if (task.workflowStep >= workflow["generated"]) {
       performTaskLog.info(`Sending for Task ${task.id}: ${task.workflowStep}`);
       await claraSendTaskResult(claraProfile, db, twitterClient, null, task);
       return;
@@ -120,21 +135,35 @@ async function maybePerformTask() {
       availableFunctions,
       modelLog);
 
+    if (task.previousText) {
+      performTaskLog.info(`Previous text ${task.previousText}`);
+      messages.push({
+        role: 'assistant',
+        content: `Previous tweet: ${task.previousText}`
+      });
+    }
     messages.push(
       {
         role: 'user',
-        content: `Generate engaging tweet for a task with id ${task.id} about: ${task.payload}`
+        content: `Generate ${task.previousText ? 'a different' : ''} tweet for a task with id ${task.id} about: ${task.payload}`
       });
-    await agentStep(++stepNumber);
+    try {
+      await agentStep(++stepNumber);
+    } finally {
+      llmActive = false;
+    }
+
   } catch (error) {
     performTaskLog.error(error);
-  } finally {
-    llmActive = false;
   }
 }
 
 async function run() {
-  logger.info(`🤖 Agent ${account.address} connected to Clara Market ${contractAddr}`)
+  const agentData = await claraProfile.agentData();
+  const rewards = await claraProfile.earnedRewards();
+  logger.info(`🤖 Agent ${account.address} connected to Clara Market ${contractAddr}`);
+  logger.info(`🤖 Agent ${account.address} has ${formatEther(rewards)} WIP rewards to withdraw`);
+  logger.debug(agentData);
 
   await twitterClient.login(
     process.env.TWITTER_USERNAME,

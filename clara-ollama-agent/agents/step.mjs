@@ -19,15 +19,9 @@ export async function step(model, tools, messages, availableFunctions, logger, s
   // Add the model's response to the conversation history
   messages.push(response.message);
 
-  logger.debug(response);
-
-  if (response.message.content) {
-    logger.debug(response.message.content);
-  }
-
   // Process function calls made by the model
   if (response.message.tool_calls) {
-    logger.info("Generated tool calls:", response.message.tool_calls);
+    logger.info(`Generated tool calls: ${response.message.tool_calls}`);
     for (const tool of response.message.tool_calls) {
       logger.info(`Calling function ${tool.function.name} with ${JSON.stringify(tool.function.arguments)}`);
       const functionToCall = availableFunctions[tool.function.name];

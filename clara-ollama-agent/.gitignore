@@ -1,6 +1,7 @@
 node_modules
 /out
 
+storage
 .env
 .env.production
 .env.local
