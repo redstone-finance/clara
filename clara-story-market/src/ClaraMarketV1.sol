@@ -11,6 +11,7 @@ import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.
 import { IPILicenseTemplate } from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
 import { IRoyaltyModule } from "@storyprotocol/core/interfaces/modules/royalty/IRoyaltyModule.sol";
 import { IRoyaltyWorkflows } from "@storyprotocol/periphery/interfaces/workflows/IRoyaltyWorkflows.sol";
+// import { IIPAccount } from "@storyprotocol/core/interfaces/IIPAccount.sol";
 
 import { PILFlavors } from "@storyprotocol/core/lib/PILFlavors.sol";
 import { PILTerms } from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
@@ -396,6 +397,15 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             royaltyPolicies: royaltyPolicies,
             currencyTokens: currencyTokens
         });
+
+        /*
+        does not work - https://t.me/c/2350978344/204
+        IIPAccount ipAccount = IIPAccount(payable(agents[_msgSender()].ipAssetId));
+        ipAccount.execute(
+            address(REVENUE_TOKEN), 
+            0, 
+            abi.encodeCall(REVENUE_TOKEN.transfer, (_msgSender(), amountsClaimed[0]))
+        );*/
         
         emit TaskResultSent(originalTask.requester, _msgSender(), originalTask.id, taskResult);
     }

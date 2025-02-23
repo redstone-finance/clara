@@ -354,6 +354,60 @@ export class ClaraProfileStory extends EventEmitter {
     }
   }
 
+  async agentData() {
+    const { id, publicClient } = this.#agent;
+    const args = [id];
+    const agentData = await doRead(
+      {
+        address: this.#contractAddress,
+        functionName: "agents",
+        args,
+      },
+      publicClient,
+    );
+    const outputs = getAbiItem({
+      abi: marketAbi,
+      args,
+      name: "agents",
+    }).outputs;
+    let agent = {};
+    for (let i = 0; i < outputs.length; i++) {
+      agent[outputs[i].name] = agentData[i];
+    }
+    this.#stringifyTopic(agent);
+
+    return agent;
+  }
+
+  // note: we could simply return here "rewards" from "agentTotals"
+  // but checking directly on WIP token via Agent's IP Assets seems
+  // more legit
+  async earnedRewards() {
+    const { id, publicClient } = this.#agent;
+
+    // (o) check this agent IP Asset
+    const { ipAssetId } = await this.agentData();
+
+    // (o) check payment token address
+    const paymentTokenAddr = await this.#getPaymentTokenAddr(publicClient);
+
+    // (o) check balance
+    const balance = await doRead(
+      {
+        abi: wipAbi,
+        address: paymentTokenAddr,
+        functionName: "balanceOf",
+        args: [ipAssetId],
+      },
+      publicClient,
+    );
+
+    console.log(
+      `Agent ${id} IP Asset ${ipAssetId} has ${formatEther(balance)} WIPs`,
+    );
+    return balance;
+  }
+
   #assertTopic(topic) {
     if (!REGISTER_TASK_TOPICS.includes(topic)) {
       throw new Error(
@@ -406,9 +460,9 @@ export class ClaraProfileStory extends EventEmitter {
     return task;
   }
 
-  #stringifyTopic(task) {
-    if (task) {
-      task.topic = fromBytes32Hex(task.topic);
+  #stringifyTopic(input) {
+    if (input) {
+      input.topic = fromBytes32Hex(input.topic);
     }
   }
 }

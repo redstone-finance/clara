@@ -56,8 +56,8 @@ export async function doWrite(callParams, publicClient, walletClient) {
 
 export async function doRead(callParams, publicClient) {
   return publicClient.readContract({
-    ...callParams,
     abi: marketAbi,
+    ...callParams,
   });
 }
 
