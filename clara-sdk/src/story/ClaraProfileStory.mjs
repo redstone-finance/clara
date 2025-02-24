@@ -9,10 +9,17 @@ import {
   getClients,
   toBytes32Hex,
 } from "./utils.mjs";
-import { erc20Abi, parseEventLogs, getAbiItem, formatEther } from "viem";
+import {
+  erc20Abi,
+  parseEventLogs,
+  getAbiItem,
+  formatEther,
+  encodeFunctionData,
+} from "viem";
 import { marketAbi } from "./marketAbi.mjs";
 import { storyAeneid } from "./chains.mjs";
 import { wipAbi } from "./wipAbi.mjs";
+import { ipAccountImplAbi } from "./ipAccountAbi.mjs";
 
 export class ClaraProfileStory extends EventEmitter {
   #agent;
@@ -46,7 +53,7 @@ export class ClaraProfileStory extends EventEmitter {
     const { account, publicClient, walletClient } = this.#agent;
 
     // (o) check payment token address
-    const paymentTokenAddr = await this.#getPaymentTokenAddr(publicClient);
+    const paymentTokenAddr = await this.#getRevenueTokenAddr(publicClient);
 
     // (o) set allowance on token for the market contract
     await this.#approve(paymentTokenAddr, reward);
@@ -81,7 +88,7 @@ export class ClaraProfileStory extends EventEmitter {
     const { account, publicClient, walletClient } = this.#agent;
 
     // (o) check payment token address
-    const paymentTokenAddr = await this.#getPaymentTokenAddr(publicClient);
+    const paymentTokenAddr = await this.#getRevenueTokenAddr(publicClient);
 
     // (o) set allowance on token for the market contract
     await this.#approve(paymentTokenAddr, rewardPerTask * BigInt(tasksCount));
@@ -235,7 +242,7 @@ export class ClaraProfileStory extends EventEmitter {
     return task;
   }
 
-  async withdrawRewards() {
+  async withdrawUnusedRewards() {
     const { id, account, publicClient, walletClient } = this.#agent;
     const txHash = await doWrite(
       {
@@ -264,6 +271,67 @@ export class ClaraProfileStory extends EventEmitter {
     } else {
       return null;
     }
+  }
+
+  async withdrawEarnedRewards(unwrapWipToIp = true) {
+    const { id, account, publicClient, walletClient } = this.#agent;
+
+    const amount = await this.earnedRewards();
+    if (amount === 0n) {
+      return null;
+    }
+
+    const transferFnData = encodeFunctionData({
+      abi: wipAbi,
+      functionName: "transfer",
+      args: [id, amount],
+    });
+
+    const agent = await this.agentData();
+
+    const revenueTokenAddress = await this.#getRevenueTokenAddr(publicClient);
+    const txHash = await doWrite(
+      {
+        abi: ipAccountImplAbi,
+        address: agent.ipAssetId,
+        functionName: "execute",
+        args: [revenueTokenAddress, 0n, transferFnData],
+        account,
+      },
+      publicClient,
+      walletClient,
+    );
+
+    const receipts = [];
+    const receipt1 = await publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    });
+    receipts.push(receipt1);
+
+    if (unwrapWipToIp) {
+      const txHash = await doWrite(
+        {
+          abi: wipAbi,
+          address: revenueTokenAddress,
+          functionName: "withdraw",
+          args: [amount],
+          account,
+        },
+        publicClient,
+        walletClient,
+      );
+
+      const receipt2 = await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+      });
+      receipts.push(receipt2);
+    }
+
+    return {
+      receipts,
+      withdrawned: amount,
+      unwrapped: unwrapWipToIp ? amount : 0,
+    };
   }
 
   async isAgentPaused() {
@@ -304,12 +372,12 @@ export class ClaraProfileStory extends EventEmitter {
 
   async mintWIPs(amount) {
     const { account, publicClient, walletClient } = this.#agent;
-    const paymentTokenAddr = await this.#getPaymentTokenAddr(publicClient);
+    const revenueTokenAddr = await this.#getRevenueTokenAddr(publicClient);
 
     const txHash = await doWrite(
       {
         abi: wipAbi,
-        address: paymentTokenAddr,
+        address: revenueTokenAddr,
         functionName: "deposit",
         value: amount,
         account,
@@ -389,13 +457,13 @@ export class ClaraProfileStory extends EventEmitter {
     const { ipAssetId } = await this.agentData();
 
     // (o) check payment token address
-    const paymentTokenAddr = await this.#getPaymentTokenAddr(publicClient);
+    const revenueTokenAddr = await this.#getRevenueTokenAddr(publicClient);
 
     // (o) check balance
     const balance = await doRead(
       {
         abi: wipAbi,
-        address: paymentTokenAddr,
+        address: revenueTokenAddr,
         functionName: "balanceOf",
         args: [ipAssetId],
       },
@@ -436,16 +504,16 @@ export class ClaraProfileStory extends EventEmitter {
     await publicClient.waitForTransactionReceipt({ hash: allowanceTxHash });
   }
 
-  async #getPaymentTokenAddr(publicClient) {
-    const paymentTokenAddr = await doRead(
+  async #getRevenueTokenAddr(publicClient) {
+    const revenueTokenAddr = await doRead(
       {
         address: this.#contractAddress,
         functionName: "getPaymentsAddr",
       },
       publicClient,
     );
-    console.log("Payment token: ", paymentTokenAddr);
-    return paymentTokenAddr;
+    console.log("Payment token: ", revenueTokenAddr);
+    return revenueTokenAddr;
   }
 
   #loadRegisteredTask(receipt) {

@@ -17,9 +17,11 @@ const account_2 = privateKeyToAccount(process.env.PRIVATE_KEY_2);
 
 const claraMarket = new ClaraMarketStory(contractAddr, network);
 console.log("Registering Agent 1");
-//const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
+const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
 //const result = await agentProfile_1.mintWIPs(parseEther("0.1"));
-// console.log(await agentProfile_2.earnedRewards());
+console.log(await agentProfile_2.earnedRewards());
+
+console.log(await agentProfile_2.withdrawEarnedRewards(true));
 /*const agentProfile_1 = await claraMarket.registerAgent(account_1, {
   metadata: "",
   topic: "chat",
@@ -33,17 +35,18 @@ await claraMarket.registerAgent(account_2, {
   fee: parseEther("0.01"),
 });
 */
-const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
+/*const agentProfile_1 = new ClaraProfileStory(account_1, contractAddr, network);
 console.log("Agent 1 registers task");
 const result = await agentProfile_1.registerTask({
   topic: "chat",
   reward: parseEther("0.02"),
   payload: "RedStone Oracles",
 });
-console.log(result);
+console.log(result);*/
 
 /*const agentProfile_2 = new ClaraProfileStory(account_2, contractAddr, network);
-console.log("Agent 2 loads task");
+ */
+/*console.log("Agent 2 loads task");
 const task = await agentProfile_2.loadNextTask();
 
 console.log("Agent 2 sends result");
@@ -52,8 +55,9 @@ const txHash = await agentProfile_2.sendTaskResult({
   result:
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla bibendum eros elit, eget imperdiet quam imperdiet at. Fusce lobortis metus nisl, in eleifend nibh luctus id. Vestibulum id mi augue. Aenean posuere enim non tempor aliquam. Phasellus ornare bibendum ipsum turpis duis.",
 });
-console.log(txHash);
+console.log(txHash);*/
 
+/*
 console.log("Agent 1 withdraw");
 const resultWithdraw = await agentProfile_1.withdrawRewards();
 console.log(resultWithdraw);*/
