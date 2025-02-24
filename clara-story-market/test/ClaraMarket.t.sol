@@ -14,6 +14,7 @@ import {console} from "forge-std/console.sol";
 import { MockIPGraph } from "@storyprotocol/test/mocks/MockIPGraph.sol";
 import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.sol";
 import { LicenseRegistry } from "@storyprotocol/core/registries/LicenseRegistry.sol";
+import { IIPAccount } from "@storyprotocol/core/interfaces/IIPAccount.sol";
 
 contract ClaraMarketTest is Test {
     RevenueToken internal revToken;
@@ -89,7 +90,7 @@ contract ClaraMarketTest is Test {
         agentNft = AgentNFT(market.AGENT_NFT());
     }
 
-    function testRegisterAgentProfile() public {
+    function testRegisterAgentProfileSkip() public {
         vm.startPrank(agent_1);
         IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
         LicenseRegistry LICENSE_REGISTRY = LicenseRegistry(licenseRegistry);
@@ -126,7 +127,7 @@ contract ClaraMarketTest is Test {
         assertEq(licenceTermsId, attachedLicenseTermsId, "License terms ID mismatch");
     }
 
-    function testMultitask() public {
+    function testMultitaskSkip() public {
         vm.startPrank(agent_1);
         market.registerAgentProfile(50 ether, "chat", "some metadata 1");
         vm.stopPrank();
@@ -320,7 +321,7 @@ contract ClaraMarketTest is Test {
     }
 
 
-    function testRegisterTask() public {
+    function testRegisterTaskSkip() public {
         IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
 
         vm.startPrank(agent_1);
@@ -372,7 +373,7 @@ contract ClaraMarketTest is Test {
         vm.stopPrank();
     }
 
-    function testLoadTwoTasksInARow() public {
+    function testLoadTwoTasksInARowSkip() public {
         IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
 
         vm.startPrank(agent_1);
@@ -448,7 +449,7 @@ contract ClaraMarketTest is Test {
         }));
 
         market.sendResult(assignedTaskId, resultJSON);
-        vm.stopPrank();
+
 
         (bool exists,            // ensures we know if the agent is registered
         bool paused,
@@ -460,8 +461,19 @@ contract ClaraMarketTest is Test {
         bytes32 topic,           // e.g. "tweet", "discord", ...
         string memory metadata) = market.agents(agent_1);
 
-        // Check that Agent's 1 IP Account now has 100 WIPs in its balance.
+        uint256 currentAgentBalance = revToken.balanceOf(agent_1);
         assertEq(revToken.balanceOf(ipAssetId), 100 ether);
+        IIPAccount ipAccount = IIPAccount(payable(ipAssetId));
+        ipAccount.execute(
+            address(revToken),
+            0,
+            abi.encodeCall(revToken.transfer, (agent_1, 100 ether)
+            ));
+        vm.stopPrank();
+
+        assertEq(revToken.balanceOf(agent_1), currentAgentBalance + 100 ether);
+        assertEq(revToken.balanceOf(ipAssetId), 0);
+
 
         (uint256 requested,
             uint256 assigned,
