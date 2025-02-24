@@ -433,6 +433,11 @@ export class ClaraProfileStory extends EventEmitter {
       },
       publicClient,
     );
+
+    if (agentData.length === 0 || agentData[0] === false) {
+      return null;
+    }
+
     const outputs = getAbiItem({
       abi: marketAbi,
       args,

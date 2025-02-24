@@ -41,7 +41,7 @@ export class ClaraMarketStory {
       this.#transport,
     );
 
-    const txId = await doWrite(
+    const txHash = await doWrite(
       {
         address: this.#contractAddress,
         functionName: "registerAgentProfile",
@@ -52,7 +52,11 @@ export class ClaraMarketStory {
       walletClient,
     );
 
-    console.log(`Profile Registered: ${explorerUrl(this.#chain)}/tx/${txId}`);
+    await publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    });
+
+    console.log(`Profile Registered: ${explorerUrl(this.#chain)}/tx/${txHash}`);
     return new ClaraProfileStory(
       account,
       this.#contractAddress,

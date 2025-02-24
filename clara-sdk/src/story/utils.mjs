@@ -40,25 +40,21 @@ export async function doWrite(callParams, publicClient, walletClient) {
 
     const { request } = await publicClient.simulateContract(callParams);
 
-    return walletClient.writeContract(request);
+    return await walletClient.writeContract(request);
   } catch (err) {
-    if (err instanceof BaseError) {
-      const revertError = err.walk(
-        (err) => err instanceof ContractFunctionRevertedError,
-      );
-      if (revertError instanceof ContractFunctionRevertedError) {
-        throw revertError;
-      }
-    }
-    throw err;
+    handleContractError(err);
   }
 }
 
 export async function doRead(callParams, publicClient) {
-  return publicClient.readContract({
-    abi: marketAbi,
-    ...callParams,
-  });
+  try {
+    return await publicClient.readContract({
+      abi: marketAbi,
+      ...callParams,
+    });
+  } catch (err) {
+    handleContractError(err);
+  }
 }
 
 export function explorerUrl(chain) {
@@ -71,4 +67,16 @@ export function toBytes32Hex(val) {
 
 export function fromBytes32Hex(val) {
   return hexToString(val, { size: 32 });
+}
+
+function handleContractError(err) {
+  if (err instanceof BaseError) {
+    const revertError = err.walk(
+      (err) => err instanceof ContractFunctionRevertedError,
+    );
+    if (revertError instanceof ContractFunctionRevertedError) {
+      throw revertError;
+    }
+  }
+  throw err;
 }
