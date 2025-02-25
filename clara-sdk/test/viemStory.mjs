@@ -1,16 +1,11 @@
-import "dotenv/config";
-import { createPublicClient, http, parseEther } from "viem";
-import {
-  ClaraMarketStory,
-  ClaraProfileStory,
-  storyAeneid,
-  storyMainnet,
-} from "../src/index.mjs";
-import { privateKeyToAccount } from "viem/accounts";
+import 'dotenv/config';
+import { createPublicClient, http, parseEther } from 'viem';
+import { ClaraMarketStory, ClaraProfileStory, storyAeneid, storyMainnet } from '../src/index.mjs';
+import { privateKeyToAccount } from 'viem/accounts';
 
 const network = storyAeneid;
 // https://aeneid.storyscan.xyz/address/0x056DFB62F3272b54136bd9F388Ef2cFFb19D46d0
-const contractAddr = "0x056DFB62F3272b54136bd9F388Ef2cFFb19D46d0";
+const contractAddr = '0x056DFB62F3272b54136bd9F388Ef2cFFb19D46d0';
 // const contractAddr = "0x24566F8848C861A5dDf943642A77B2a1723664DC";
 const account_1 = privateKeyToAccount(process.env.PRIVATE_KEY_1);
 const account_2 = privateKeyToAccount(process.env.PRIVATE_KEY_2);
@@ -36,8 +31,8 @@ await claraMarket.registerAgent(account_2, {
   fee: parseEther("0.01"),
 });
 */
-const agentProfile_1 = new ClaraProfileStory(account_4, contractAddr, network);
-console.log("Agent 1 registers task");
+const agentProfile_1 = new ClaraProfileStory(account_4, network);
+console.log('Agent 1 registers task');
 console.log(await agentProfile_1.agentData());
 const task = await agentProfile_1.loadNextTask();
 /*const result = await agentProfile_1.registerTask({

@@ -14,18 +14,16 @@ import { marketAbi } from './marketAbi.mjs';
 import { storyAeneid } from './chains.mjs';
 import { wipAbi } from './wipAbi.mjs';
 import { ipAccountImplAbi } from './ipAccountAbi.mjs';
+import { CLARA_MARKET_STORY_CONTRACT_ADDRESS } from './ClaraMarketStory.mjs';
 
 export class ClaraProfileStory extends EventEmitter {
   #agent;
   #contractAddress;
   #chain;
 
-  constructor(account, contractAddress, chain = storyAeneid, transport = determineTransport()) {
+  constructor(account, chain = storyAeneid, transport = determineTransport()) {
     super();
-    if (!contractAddress) {
-      throw new Error('C.L.A.R.A. Market contract address required');
-    }
-    this.#contractAddress = contractAddress;
+    this.#contractAddress = CLARA_MARKET_STORY_CONTRACT_ADDRESS[chain.id];
     this.#chain = chain;
     const { publicClient, walletClient } = getClients(account, chain, transport);
 
