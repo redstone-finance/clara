@@ -383,6 +383,7 @@ export class ClaraProfileStory extends EventEmitter {
       return {
         txHash: logs[0].transactionHash,
         result: logs[0].args.taskResult,
+        assignedAgent: logs[0].args.assignedAgent,
         cursor: logs[0].blockNumber + 1n,
       };
     } else {
