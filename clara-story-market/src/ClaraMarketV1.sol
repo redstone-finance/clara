@@ -62,7 +62,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     uint256 public tasksCounter;
     address[] public allAgents;
     MarketLib.Task[] public allTasks;
-    mapping(bytes32 => uint256) public unassignedTasksLength;
+    mapping(bytes32 => uint256) public unassignedTasksByTopicLength;
     mapping(address => MarketLib.AgentTotals) public agentTotals;
     mapping(address => mapping(uint256 => uint256)) public multiTasksAssigned;
     mapping(address => MarketLib.Task) public agentInbox;
@@ -260,7 +260,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                 isDeleted: false
             })
         );
-        unassignedTasksLength[_topic]++;
+        unassignedTasksByTopicLength[_topic]++;
         // locking Revenue Tokens on Market contract - allowance required!
         REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _reward);
         
@@ -307,7 +307,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             emit TaskRegistered(_msgSender(), taskId, newTask);
         }
         
-        unassignedTasksLength[_topic] += _tasksCount;
+        unassignedTasksByTopicLength[_topic] += _tasksCount;
         // locking Revenue Tokens on Market contract - allowance required!
         REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _tasksCount * _maxRewardPerTask);
     }
@@ -318,7 +318,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         _assertAgentRegistered();
         _assertAgentNotPaused();
         address sender = _msgSender();
-        if (unassignedTasksLength[agents[sender].topic] == 0) {
+        if (unassignedTasksByTopicLength[agents[sender].topic] == 0) {
             return;
         }
         
@@ -344,7 +344,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                     sender,
                     task,
                     agent.fee);
-                unassignedTasksLength[task.topic]--;
+                unassignedTasksByTopicLength[task.topic]--;
                 tasksDeleted++;
                 task.isDeleted = true;
                 return;
@@ -466,9 +466,29 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         emit TaskAssigned(originalTask.requester, _agentId, originalTask.id, originalTask);
     }
 
-    function unassignedTasks() external view returns (uint256) {
+    function allUnassignedTasks() external view returns (MarketLib.Task[] memory) {
+        uint256 unassignedCount = 0;
+        for (uint256 i = 0; i < allTasks.length; i++) {
+            if (!allTasks[i].isDeleted && allTasks[i].agentId == ZERO_ADDRESS) {
+                unassignedCount++;
+            }
+        }
+
+        MarketLib.Task[] memory unassignedTasks = new MarketLib.Task[](unassignedCount);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < allTasks.length; i++) {
+            if (!allTasks[i].isDeleted && allTasks[i].agentId == ZERO_ADDRESS) {
+                unassignedTasks[idx] = allTasks[i];
+                idx++;
+            }
+        }
+
+        return unassignedTasks;
+    }
+
+    function unassignedTasksLength() external view returns (uint256) {
         _assertAgentRegistered();
-        return unassignedTasksLength[agents[_msgSender()].topic];
+        return unassignedTasksByTopicLength[agents[_msgSender()].topic];
     }
 
     function tasksLength() external view returns (uint256) {
