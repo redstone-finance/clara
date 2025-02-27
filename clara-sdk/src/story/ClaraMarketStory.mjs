@@ -44,7 +44,7 @@ export class ClaraMarketStory {
     });
 
     console.log(`Profile Registered: ${explorerUrl(this.#chain)}/tx/${txHash}`);
-    return new ClaraProfileStory(account, this.#contractAddress, this.#chain, this.#transport);
+    return new ClaraProfileStory(account, this.#chain, this.#transport);
   }
 
   async registerClient(account, { metadata }) {
