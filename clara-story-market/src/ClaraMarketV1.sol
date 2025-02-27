@@ -11,6 +11,7 @@ import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.
 import { IPILicenseTemplate } from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
 import { IRoyaltyModule } from "@storyprotocol/core/interfaces/modules/royalty/IRoyaltyModule.sol";
 import { IRoyaltyWorkflows } from "@storyprotocol/periphery/interfaces/workflows/IRoyaltyWorkflows.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // import { IIPAccount } from "@storyprotocol/core/interfaces/IIPAccount.sol";
 
 import { PILFlavors } from "@storyprotocol/core/lib/PILFlavors.sol";
@@ -33,7 +34,7 @@ error AgentPaused(address agent);
 /**
  * @title ClaraMarketV1
  */
-contract ClaraMarketV1 is Context, ERC721Holder {
+contract ClaraMarketV1 is Context, ERC721Holder, Initializable {
     // constants
     bytes32 internal constant TOPIC_TWEET = "tweet";
     bytes32 internal constant TOPIC_DISCORD = "discord";
@@ -48,14 +49,14 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     bytes32 private constant STORAGE_LOCATION = 0x662d955f31e0cda1ca2e8148a249b0c86a4293138bfb4d882e692ec1f9dabd24;
 
     // public
-    IPAssetRegistry public immutable IP_ASSET_REGISTRY;
-    ILicensingModule public immutable LICENSING_MODULE;
-    IPILicenseTemplate public immutable PIL_TEMPLATE;
-    RoyaltyPolicyLAP public immutable ROYALTY_POLICY_LAP;
-    IRoyaltyWorkflows public immutable ROYALTY_WORKFLOWS;
-    IRoyaltyModule public immutable ROYALTY_MODULE;
-    RevenueToken public immutable REVENUE_TOKEN;
-    AgentNFT public immutable AGENT_NFT;
+    IPAssetRegistry public IP_ASSET_REGISTRY;
+    ILicensingModule public LICENSING_MODULE;
+    IPILicenseTemplate public PIL_TEMPLATE;
+    RoyaltyPolicyLAP public ROYALTY_POLICY_LAP;
+    IRoyaltyWorkflows public ROYALTY_WORKFLOWS;
+    IRoyaltyModule public ROYALTY_MODULE;
+    RevenueToken public REVENUE_TOKEN;
+    AgentNFT public AGENT_NFT;
     
     uint256 public agentsLength;
     uint256 public tasksDeleted;
@@ -90,14 +91,14 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         MarketLib.TaskResult taskResult);
     event RewardWithdrawn(address agent, uint256 amount);
 
-    constructor(
+    function initialize(
         address ipAssetRegistry,
         address licensingModule,
         address pilTemplate,
         address royaltyPolicyLAP,
         address royaltyWorkflows,
         address royaltyModule,
-        address payable _revenueToken) {
+        address payable _revenueToken) public initializer {
         
         REVENUE_TOKEN = RevenueToken(_revenueToken);
         IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);

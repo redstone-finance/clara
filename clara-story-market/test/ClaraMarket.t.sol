@@ -15,6 +15,7 @@ import { MockIPGraph } from "@storyprotocol/test/mocks/MockIPGraph.sol";
 import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.sol";
 import { LicenseRegistry } from "@storyprotocol/core/registries/LicenseRegistry.sol";
 import { IIPAccount } from "@storyprotocol/core/interfaces/IIPAccount.sol";
+import "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract ClaraMarketTest is Test {
     RevenueToken internal revToken;
@@ -78,14 +79,20 @@ contract ClaraMarketTest is Test {
         vm.stopPrank();
 
         // 3. Deploy the ClaraMarket contract
-        market = new ClaraMarketV1(
-            ipAssetRegistry,
-            licensingModule,
-            pilTemplate,
-            royaltyPolicyLAP,
-            royaltyWorkflows,
-            royaltyModule,
-            _revenueToken);
+        address proxy = Upgrades.deployTransparentProxy(
+            "ClaraMarketV1.sol",
+            msg.sender,
+            abi.encodeCall(
+                ClaraMarketV1.initialize,
+                (ipAssetRegistry,
+                licensingModule,
+                pilTemplate,
+                royaltyPolicyLAP,
+                royaltyWorkflows,
+                royaltyModule,
+                _revenueToken)));
+
+        market = ClaraMarketV1(proxy);
 
         agentNft = AgentNFT(market.AGENT_NFT());
     }
