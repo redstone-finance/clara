@@ -517,6 +517,7 @@ contract ClaraMarketTest is Test {
             "tweet",
             "task payload"
         );
+        vm.stopPrank();
 
         MarketLib.Task[] memory tasks = market.allUnassignedTasks();
         assertEq(tasks[0].topic, "chat");
@@ -526,6 +527,87 @@ contract ClaraMarketTest is Test {
         assertEq(tasks.length, 2);
     }
 
+    function testDeleteTasks() public {
+        IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+
+        vm.startPrank(agent_1);
+        market.registerAgentProfile(50 ether, "chat", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_1);
+        revToken.approve(address(market), 500 ether);
+        uint256 expectedTokenId = agentNft.nextTokenId();
+        address expectedIpId = IP_ASSET_REGISTRY.ipId(block.chainid, address(agentNft), expectedTokenId);
+        uint256 expectedTaskId = market.tasksCounter();
+         
+        uint256 reward = 100 ether;
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "task payload"
+        );
+
+        uint256 reward_2 = 50 ether;
+        market.registerTask(
+            reward_2,
+            0,
+            "tweet",
+            "task payload"
+        );
+
+        MarketLib.Task[] memory tasks = market.allUnassignedTasks();
+        assertEq(tasks.length, 2);
+        uint256[] memory taskIds = new uint256[](tasks.length);
+        for (uint256 i = 0; i < tasks.length; i++) {
+            taskIds[i] = tasks[i].id;
+        }
+        uint256 currentAgentBalance = revToken.balanceOf(agent_1);
+        market.deleteTasks(taskIds);
+        vm.stopPrank();
+        assertEq(market.tasksDeleted(), 2);
+        uint256 newAgentBalance = revToken.balanceOf(agent_1);
+        assertEq(newAgentBalance - currentAgentBalance, 150 ether);
+    }
+
+    function testDeleteTasksNonOwner() public {
+        IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+
+        vm.startPrank(agent_1);
+        market.registerAgentProfile(50 ether, "chat", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        market.registerAgentProfile(100 ether, "tweet", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_1);
+        revToken.approve(address(market), 500 ether);
+        uint256 expectedTokenId = agentNft.nextTokenId();
+        address expectedIpId = IP_ASSET_REGISTRY.ipId(block.chainid, address(agentNft), expectedTokenId);
+        uint256 expectedTaskId = market.tasksCounter();
+         
+        uint256 reward = 100 ether;
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "task payload"
+        );
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        MarketLib.Task[] memory tasks = market.allUnassignedTasks();
+        assertEq(tasks.length, 1);
+        uint256[] memory taskIds = new uint256[](tasks.length);
+        for (uint256 i = 0; i < tasks.length; i++) {
+            taskIds[i] = tasks[i].id;
+        }
+        vm.expectRevert("only owner or the requester of the task can delete the task");
+        market.deleteTasks(taskIds);
+        vm.stopPrank();
+        assertEq(market.tasksDeleted(), 0);
+    }
 
     event RegisteredAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
     event TaskAssigned(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.Task task);
