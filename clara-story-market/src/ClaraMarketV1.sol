@@ -1,26 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "./ClaraMarketRead.sol";
+
+import "./ClaraMarketStorageV1.sol";
+import "./ClaraMarketWrite.sol";
 import "./QueueLib.sol";
 import "./mocks/AgentNFT.sol";
-
 import "./mocks/RevenueToken.sol";
-import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import { ILicensingModule } from "@storyprotocol/core/interfaces/modules/licensing/ILicensingModule.sol";
-import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.sol";
-import { IPILicenseTemplate } from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
-import { IRoyaltyModule } from "@storyprotocol/core/interfaces/modules/royalty/IRoyaltyModule.sol";
-import { IRoyaltyWorkflows } from "@storyprotocol/periphery/interfaces/workflows/IRoyaltyWorkflows.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 // import { IIPAccount } from "@storyprotocol/core/interfaces/IIPAccount.sol";
 
-import { PILFlavors } from "@storyprotocol/core/lib/PILFlavors.sol";
-import { PILTerms } from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
+import {ILicensingModule} from "@storyprotocol/core/interfaces/modules/licensing/ILicensingModule.sol";
+import {IPAssetRegistry} from "@storyprotocol/core/registries/IPAssetRegistry.sol";
 // import {console} from "forge-std/console.sol";
-import { RoyaltyPolicyLAP } from "@storyprotocol/core/modules/royalty/policies/LAP/RoyaltyPolicyLAP.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {IPILicenseTemplate} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
+import {IRoyaltyModule} from "@storyprotocol/core/interfaces/modules/royalty/IRoyaltyModule.sol";
+import {IRoyaltyWorkflows} from "@storyprotocol/periphery/interfaces/workflows/IRoyaltyWorkflows.sol";
 import {MarketLib} from "./MarketLib.sol";
+import {PILFlavors} from "@storyprotocol/core/lib/PILFlavors.sol";
+import {PILTerms} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
+import {RoyaltyPolicyLAP} from "@storyprotocol/core/modules/royalty/policies/LAP/RoyaltyPolicyLAP.sol";
 
-error UnknownTopic(bytes32 topic);
+    error UnknownTopic(bytes32 topic);
 error UnknownMatchingStrategy(bytes32 strategy);
 error AgentNotRegistered(address agent);
 error AgentAlreadyRegistered(address agent);
@@ -30,10 +35,11 @@ error NoAgentsMatchedForTask();
 error PreviousTaskNotSentBack(uint256 taskId);
 error AgentPaused(address agent);
 
+
 /**
  * @title ClaraMarketV1
  */
-contract ClaraMarketV1 is Context, ERC721Holder {
+contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Holder, Initializable {
     // constants
     bytes32 internal constant TOPIC_TWEET = "tweet";
     bytes32 internal constant TOPIC_DISCORD = "discord";
@@ -43,33 +49,17 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     bytes32 internal constant TOPIC_NONE = "none";
     
     address internal constant ZERO_ADDRESS = address(0);
-
-    // viem.keccak256(toHex("RedStone.ClaraMarket.Storage"))
-    bytes32 private constant STORAGE_LOCATION = 0x662d955f31e0cda1ca2e8148a249b0c86a4293138bfb4d882e692ec1f9dabd24;
+    
 
     // public
-    IPAssetRegistry public immutable IP_ASSET_REGISTRY;
-    ILicensingModule public immutable LICENSING_MODULE;
-    IPILicenseTemplate public immutable PIL_TEMPLATE;
-    RoyaltyPolicyLAP public immutable ROYALTY_POLICY_LAP;
-    IRoyaltyWorkflows public immutable ROYALTY_WORKFLOWS;
-    IRoyaltyModule public immutable ROYALTY_MODULE;
-    RevenueToken public immutable REVENUE_TOKEN;
-    AgentNFT public immutable AGENT_NFT;
-    
-    uint256 public agentsLength;
-    uint256 public tasksDeleted;
-    uint256 public tasksCounter;
-    address[] public allAgents;
-    MarketLib.Task[] public allTasks;
-    mapping(bytes32 => uint256) public unassignedTasksLength;
-    mapping(address => MarketLib.AgentTotals) public agentTotals;
-    mapping(address => mapping(uint256 => uint256)) public multiTasksAssigned;
-    mapping(address => MarketLib.Task) public agentInbox;
-    mapping(address => uint256) public withdrawalAmount;
-    mapping(address => MarketLib.AgentInfo) public agents;
-    MarketLib.MarketTotals public marketTotals;
-    mapping(bytes32 => bool) internal topics;
+    IPAssetRegistry public IP_ASSET_REGISTRY;
+    ILicensingModule public LICENSING_MODULE;
+    IPILicenseTemplate public PIL_TEMPLATE;
+    RoyaltyPolicyLAP public ROYALTY_POLICY_LAP;
+    IRoyaltyWorkflows public ROYALTY_WORKFLOWS;
+    IRoyaltyModule public ROYALTY_MODULE;
+    RevenueToken public REVENUE_TOKEN;
+    AgentNFT public AGENT_NFT;
 
     // events
     event AgentRegistered(address indexed agent, MarketLib.AgentInfo agentInfo);
@@ -90,14 +80,14 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         MarketLib.TaskResult taskResult);
     event RewardWithdrawn(address agent, uint256 amount);
 
-    constructor(
+    function initialize(
         address ipAssetRegistry,
         address licensingModule,
         address pilTemplate,
         address royaltyPolicyLAP,
         address royaltyWorkflows,
         address royaltyModule,
-        address payable _revenueToken) {
+        address payable _revenueToken) public initializer {
         
         REVENUE_TOKEN = RevenueToken(_revenueToken);
         IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
@@ -107,28 +97,26 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         ROYALTY_WORKFLOWS = IRoyaltyWorkflows(royaltyWorkflows);
         ROYALTY_MODULE = IRoyaltyModule(royaltyModule);
         
-        topics[TOPIC_TWEET] = true;
-        topics[TOPIC_DISCORD] = true;
-        topics[TOPIC_TELEGRAM] = true;
-        topics[TOPIC_NFT] = true;
-        topics[TOPIC_CHAT] = true;
-        topics[TOPIC_NONE] = true;
+        _getStorage().topics[TOPIC_TWEET] = true;
+        _getStorage().topics[TOPIC_DISCORD] = true;
+        _getStorage().topics[TOPIC_TELEGRAM] = true;
+        _getStorage().topics[TOPIC_NFT] = true;
+        _getStorage().topics[TOPIC_CHAT] = true;
+        _getStorage().topics[TOPIC_NONE] = true;
 
-        tasksCounter = 1;
+        _getStorage().tasksCounter = 1;
 
         AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); 
     }
 
-    function getPaymentsAddr() external view returns (address) {
-        return address(REVENUE_TOKEN);
-    }
+
 
     function withdraw()
     external {
         _assertAgentRegistered();
-        uint256 amount = withdrawalAmount[_msgSender()];
+        uint256 amount = _getStorage().withdrawalAmount[_msgSender()];
         if (amount > 0) {
-            withdrawalAmount[_msgSender()] = 0;
+            _getStorage().withdrawalAmount[_msgSender()] = 0;
             REVENUE_TOKEN.transfer(_msgSender(), amount);
             emit RewardWithdrawn(_msgSender(), amount);
         }
@@ -137,20 +125,21 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     function cleanTasks()
     external {
         _assertAgentRegistered();
-        if (tasksDeleted > 0) {
+        if (_getStorage().tasksDeleted > 0) {
             uint256 write = 0;
-            for (uint256 i = 0; i < allTasks.length; i++) {
+            uint256 tasksLen = _getStorage().allTasks.length;
+            for (uint256 i = 0; i < tasksLen; i++) {
                 // If the element should be kept...
-                if (!allTasks[i].isDeleted) {
-                    allTasks[write] = allTasks[i];
+                if (!_getStorage().allTasks[i].isDeleted) {
+                    _getStorage().allTasks[write] = _getStorage().allTasks[i];
                     write++;
                 }
             }
             // Remove extra tail elements
-            while (allTasks.length > write) {
-                allTasks.pop();
+            while (_getStorage().allTasks.length > write) {
+                _getStorage().allTasks.pop();
             }
-            tasksDeleted = 0;
+            _getStorage().tasksDeleted = 0;
         }
     }
 
@@ -161,7 +150,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     )
     external
     {
-        require(agents[_msgSender()].exists == false, AgentAlreadyRegistered(_msgSender()));
+        require(_getStorage().agents[_msgSender()].exists == false, AgentAlreadyRegistered(_msgSender()));
         _assertTopic(_topic);
         require(_fee >= 0, ValueNegative());
 
@@ -182,7 +171,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         AGENT_NFT.transferFrom(address(this), _msgSender(), tokenId);
         
         _registerAgent();
-        agents[_msgSender()] = MarketLib.AgentInfo({
+        _getStorage().agents[_msgSender()] = MarketLib.AgentInfo({
             exists: true,
             paused: false,
             id: _msgSender(),
@@ -194,7 +183,7 @@ contract ClaraMarketV1 is Context, ERC721Holder {
             licenceTermsId: licenseTermsId
         });
         
-        emit AgentRegistered(_msgSender(), agents[_msgSender()]);
+        emit AgentRegistered(_msgSender(), _getStorage().agents[_msgSender()]);
     }
 
     function updateAgentFee(uint256 _fee)
@@ -203,8 +192,8 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         _assertAgentRegistered();
         require(_fee >= 0, ValueNegative());
 
-        agents[_msgSender()].fee = _fee;
-        emit AgentUpdated(_msgSender(), agents[_msgSender()]);
+        _getStorage().agents[_msgSender()].fee = _fee;
+        emit AgentUpdated(_msgSender(), _getStorage().agents[_msgSender()]);
     }
 
     function updateAgentPaused(bool paused)
@@ -212,18 +201,18 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     {
         _assertAgentRegistered();
         
-        agents[_msgSender()].paused = paused;
-        emit AgentUpdated(_msgSender(), agents[_msgSender()]);
+        _getStorage().agents[_msgSender()].paused = paused;
+        emit AgentUpdated(_msgSender(), _getStorage().agents[_msgSender()]);
     }
 
     function updateAgentTopic(bytes32 _topic)
     external
     {
-        require(agents[_msgSender()].exists == true, AgentNotRegistered(_msgSender()));
+        require(_getStorage().agents[_msgSender()].exists == true, AgentNotRegistered(_msgSender()));
         _assertTopic(_topic);
 
-        agents[_msgSender()].topic = _topic;
-        emit AgentUpdated(_msgSender(), agents[_msgSender()]);
+        _getStorage().agents[_msgSender()].topic = _topic;
+        emit AgentUpdated(_msgSender(), _getStorage().agents[_msgSender()]);
     }
 
     function registerTask(
@@ -239,11 +228,11 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         require(_reward >= 0, ValueNegative());
         _assertTopic(_topic);
 
-        agentTotals[_msgSender()].requested += 1;
+        _getStorage().agentTotals[_msgSender()].requested += 1;
         
-        uint256 taskId = tasksCounter++;
+        uint256 taskId = _getStorage().tasksCounter++;
 
-        allTasks.push(MarketLib.Task({
+        _getStorage().allTasks.push(MarketLib.Task({
                 id: taskId,
                 parentTaskId: 0,
                 contextId: _contextId == 0 ? taskId : _contextId,
@@ -260,11 +249,11 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                 isDeleted: false
             })
         );
-        unassignedTasksLength[_topic]++;
+        _getStorage().unassignedTasksLength[_topic]++;
         // locking Revenue Tokens on Market contract - allowance required!
         REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _reward);
         
-        emit TaskRegistered(_msgSender(), taskId, allTasks[allTasks.length - 1]);
+        emit TaskRegistered(_msgSender(), taskId, _getStorage().allTasks[_getStorage().allTasks.length - 1]);
     }
 
     function registerMultiTask(
@@ -281,11 +270,11 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         require(_maxRewardPerTask >= 0, ValueNegative());
         _assertTopic(_topic);
 
-        agentTotals[_msgSender()].requested += _tasksCount; // not sure about this
-        uint256 parentTaskId = tasksCounter++;
+        _getStorage().agentTotals[_msgSender()].requested += _tasksCount; // not sure about this
+        uint256 parentTaskId = _getStorage().tasksCounter++;
         
         for (uint256 i = 0; i < _tasksCount; i++) {
-            uint256 taskId = tasksCounter++;
+            uint256 taskId = _getStorage().tasksCounter++;
             
             MarketLib.Task memory newTask = MarketLib.Task({
                 id: taskId, 
@@ -303,11 +292,11 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                 isMultiTask: true,
                 isDeleted: false
             });
-            allTasks.push(newTask);
+            _getStorage().allTasks.push(newTask);
             emit TaskRegistered(_msgSender(), taskId, newTask);
         }
         
-        unassignedTasksLength[_topic] += _tasksCount;
+        _getStorage().unassignedTasksLength[_topic] += _tasksCount;
         // locking Revenue Tokens on Market contract - allowance required!
         REVENUE_TOKEN.transferFrom(_msgSender(), address(this), _tasksCount * _maxRewardPerTask);
     }
@@ -318,18 +307,18 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         _assertAgentRegistered();
         _assertAgentNotPaused();
         address sender = _msgSender();
-        if (unassignedTasksLength[agents[sender].topic] == 0) {
+        if (_getStorage().unassignedTasksLength[_getStorage().agents[sender].topic] == 0) {
             return;
         }
         
-        require(agentInbox[sender].requester == ZERO_ADDRESS, PreviousTaskNotSentBack(agentInbox[sender].id));
+        require(_getStorage().agentInbox[sender].requester == ZERO_ADDRESS, PreviousTaskNotSentBack(_getStorage().agentInbox[sender].id));
         
-        require(agents[sender].exists == true, AgentNotRegistered(sender));
-        uint256 currentTasksLength = allTasks.length;
-        MarketLib.AgentInfo storage agent = agents[sender];
+        require(_getStorage().agents[sender].exists == true, AgentNotRegistered(sender));
+        uint256 currentTasksLength = _getStorage().allTasks.length;
+        MarketLib.AgentInfo storage agent = _getStorage().agents[sender];
         
         for (uint256 i = 0; i < currentTasksLength; i++) {
-            MarketLib.Task storage task = allTasks[i];
+            MarketLib.Task storage task = _getStorage().allTasks[i];
             if (task.isDeleted) {
                 continue;
             }
@@ -338,14 +327,14 @@ contract ClaraMarketV1 is Context, ERC721Holder {
                 && task.requester != sender
                 && (!task.isMultiTask 
                     || (task.isMultiTask 
-                        && multiTasksAssigned[sender][task.parentTaskId] < task.maxRepeatedPerAgent))
+                        && _getStorage().multiTasksAssigned[sender][task.parentTaskId] < task.maxRepeatedPerAgent))
             ) {
                 _loadTask(
                     sender,
                     task,
                     agent.fee);
-                unassignedTasksLength[task.topic]--;
-                tasksDeleted++;
+                _getStorage().unassignedTasksLength[task.topic]--;
+                _getStorage().tasksDeleted++;
                 task.isDeleted = true;
                 return;
             }
@@ -360,19 +349,19 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     {
         _assertAgentRegistered();
 
-        MarketLib.Task memory originalTask = agentInbox[_msgSender()];
+        MarketLib.Task memory originalTask = _getStorage().agentInbox[_msgSender()];
         require(
             originalTask.id != 0,
             TaskNotFound(_taskId)
         );
 
-        delete agentInbox[_msgSender()];
+        delete _getStorage().agentInbox[_msgSender()];
 
-        agentTotals[_msgSender()].done += 1;
-        agentTotals[_msgSender()].rewards += originalTask.reward;
+        _getStorage().agentTotals[_msgSender()].done += 1;
+        _getStorage().agentTotals[_msgSender()].rewards += originalTask.reward;
 
-        marketTotals.done += 1;
-        marketTotals.rewards += originalTask.reward;
+        _getStorage().marketTotals.done += 1;
+        _getStorage().marketTotals.rewards += originalTask.reward;
 
         MarketLib.TaskResult memory taskResult = MarketLib.TaskResult({
             id: originalTask.id,
@@ -391,25 +380,67 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         royaltyPolicies[0] = address(ROYALTY_POLICY_LAP);
         currencyTokens[0] = address(REVENUE_TOKEN);
         uint256[] memory amountsClaimed = ROYALTY_WORKFLOWS.claimAllRevenue({
-            ancestorIpId: agents[_msgSender()].ipAssetId,
-            claimer: agents[_msgSender()].ipAssetId,
+            ancestorIpId: _getStorage().agents[_msgSender()].ipAssetId,
+            claimer: _getStorage().agents[_msgSender()].ipAssetId,
             childIpIds: childIpIds,
             royaltyPolicies: royaltyPolicies,
             currencyTokens: currencyTokens
         });
-
-        /*
-        does not work - https://t.me/c/2350978344/204
-        IIPAccount ipAccount = IIPAccount(payable(agents[_msgSender()].ipAssetId));
-        ipAccount.execute(
-            address(REVENUE_TOKEN), 
-            0, 
-            abi.encodeCall(REVENUE_TOKEN.transfer, (_msgSender(), amountsClaimed[0]))
-        );*/
         
         emit TaskResultSent(originalTask.requester, _msgSender(), originalTask.id, taskResult);
     }
 
+    function agent(address _agentId) external view returns (MarketLib.AgentInfo memory)
+    {
+        return _getStorage().agents[_agentId];
+    }
+
+    function agentTotals(address _agentId) external view returns (MarketLib.AgentTotals memory)
+    {
+        return _getStorage().agentTotals[_agentId];
+    }
+    
+    function unassignedTasks() external view returns (uint256) {
+        _assertAgentRegistered();
+        return _getStorage().unassignedTasksLength[_getStorage().agents[_msgSender()].topic];
+    }
+    
+    function unassignedTasksLength(bytes32 _topic) external view returns(uint256) {
+        return _getStorage().unassignedTasksLength[_topic];
+    }
+    
+    function withdrawalAmount(address _agentId) external view returns(uint256) {
+        return _getStorage().withdrawalAmount[_agentId];
+    }
+    
+    function tasksCounter() external view returns(uint256) {
+        return _getStorage().tasksCounter;
+    }
+
+    function tasksDeleted() external view returns (uint256) {
+        return _getStorage().tasksDeleted;
+    }
+
+    function taskById(uint256 id) external view returns (MarketLib.Task memory) {
+        return _getStorage().allTasks[id];
+    }
+
+    function tasksLength() external view returns (uint256) {
+        return _getStorage().allTasks.length;
+    }
+
+    function marketTotals() external view returns (MarketLib.MarketTotals memory) {
+        return _getStorage().marketTotals;
+    }
+
+    function isAgentPaused() external view returns (bool) {
+        _assertAgentRegistered();
+        return _getStorage().agents[_msgSender()].paused;
+    }
+
+    function getPaymentsAddr() external view returns (address) {
+        return address(REVENUE_TOKEN);
+    }
 
     function _loadTask(
         address _agentId,
@@ -418,9 +449,9 @@ contract ClaraMarketV1 is Context, ERC721Holder {
     ) internal {
         uint256 rewardDiff = originalTask.reward - agentFee;
         if (rewardDiff > 0) {
-            withdrawalAmount[originalTask.requester] += rewardDiff;
+            _getStorage().withdrawalAmount[originalTask.requester] += rewardDiff;
         }
-        
+
         originalTask.reward = agentFee;
         originalTask.agentId = _agentId;
 
@@ -430,9 +461,9 @@ contract ClaraMarketV1 is Context, ERC721Holder {
 
         // mint a license token from the parent
         uint256 licenseTokenId = LICENSING_MODULE.mintLicenseTokens({
-            licensorIpId: agents[_agentId].ipAssetId,
+            licensorIpId: _getStorage().agents[_agentId].ipAssetId,
             licenseTemplate: address(PIL_TEMPLATE),
-            licenseTermsId: agents[_agentId].licenceTermsId,
+            licenseTermsId: _getStorage().agents[_agentId].licenceTermsId,
             amount: 1,
             receiver: address(this),
             royaltyContext: "", // for PIL, royaltyContext is empty string
@@ -454,10 +485,10 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         originalTask.childIpId = childIpId;
         originalTask.childTokenId = childTokenId;
 
-        agentInbox[_agentId] = originalTask;
-        agentTotals[_agentId].assigned++;
+        _getStorage().agentInbox[_agentId] = originalTask;
+        _getStorage().agentTotals[_agentId].assigned++;
         if (originalTask.isMultiTask) {
-            multiTasksAssigned[_agentId][originalTask.parentTaskId]++;
+            _getStorage().multiTasksAssigned[_agentId][originalTask.parentTaskId]++;
         }
 
         // transfer the NFT to the receiver so it owns the child IPA
@@ -466,22 +497,9 @@ contract ClaraMarketV1 is Context, ERC721Holder {
         emit TaskAssigned(originalTask.requester, _agentId, originalTask.id, originalTask);
     }
 
-    function unassignedTasks() external view returns (uint256) {
-        _assertAgentRegistered();
-        return unassignedTasksLength[agents[_msgSender()].topic];
-    }
-
-    function tasksLength() external view returns (uint256) {
-        return allTasks.length;
-    }
-
-    function isAgentPaused() external view returns (bool) {
-        _assertAgentRegistered();
-        return agents[_msgSender()].paused;
-    }
 
     function _agentInboxCount(address _agentId) private view returns (uint256) {
-        MarketLib.AgentTotals memory tot = agentTotals[_agentId];
+        MarketLib.AgentTotals memory tot = _getStorage().agentTotals[_agentId];
         // approximate:
         uint256 currentlyInInbox = tot.assigned - tot.done;
         return currentlyInInbox; // currently - 1 at most..so can be simplified
@@ -489,23 +507,26 @@ contract ClaraMarketV1 is Context, ERC721Holder {
 
     function _registerAgent() internal {
         // Add only if new
-        if (!agents[_msgSender()].exists) {
-            agents[_msgSender()].exists = true;
-            allAgents.push(_msgSender());
-            agentsLength++;
+        if (!_getStorage().agents[_msgSender()].exists) {
+            _getStorage().agents[_msgSender()].exists = true;
+            _getStorage().allAgents.push(_msgSender());
+            _getStorage().agentsLength++;
         }
     }
 
     function _assertTopic(bytes32 _topic) internal view {
-        require(topics[_topic], UnknownTopic(_topic));
+        require(_getStorage().topics[_topic], UnknownTopic(_topic));
     }
 
     function _assertAgentRegistered() internal view {
-        require(agents[_msgSender()].exists, AgentNotRegistered(_msgSender()));
+        require(_getStorage().agents[_msgSender()].exists, AgentNotRegistered(_msgSender()));
     }
 
     function _assertAgentNotPaused() internal view {
-        require(agents[_msgSender()].paused == false, AgentPaused(_msgSender()));
+        require(_getStorage().agents[_msgSender()].paused == false, AgentPaused(_msgSender()));
     }
 
+    function _getStorage() internal pure returns (ClaraMarketStorageData storage _sd) {
+        return ClaraMarketStorageV1.load();
+    }
 }
