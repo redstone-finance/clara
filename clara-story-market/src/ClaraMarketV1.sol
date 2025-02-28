@@ -1,28 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import "./ClaraMarketStorageV1.sol";
-import "./QueueLib.sol";
+import "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "./ClaraMarketRead.sol";
 
+import "./ClaraMarketStorageV1.sol";
+import "./ClaraMarketWrite.sol";
+import "./QueueLib.sol";
 import "./mocks/AgentNFT.sol";
 import "./mocks/RevenueToken.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import {ILicensingModule} from "@storyprotocol/core/interfaces/modules/licensing/ILicensingModule.sol";
-import {IPAssetRegistry} from "@storyprotocol/core/registries/IPAssetRegistry.sol";
-import {IPILicenseTemplate} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
-import {IRoyaltyModule} from "@storyprotocol/core/interfaces/modules/royalty/IRoyaltyModule.sol";
 // import { IIPAccount } from "@storyprotocol/core/interfaces/IIPAccount.sol";
 
-import {IRoyaltyWorkflows} from "@storyprotocol/periphery/interfaces/workflows/IRoyaltyWorkflows.sol";
-import {PILFlavors} from "@storyprotocol/core/lib/PILFlavors.sol";
+import {ILicensingModule} from "@storyprotocol/core/interfaces/modules/licensing/ILicensingModule.sol";
+import {IPAssetRegistry} from "@storyprotocol/core/registries/IPAssetRegistry.sol";
 // import {console} from "forge-std/console.sol";
+import {IPILicenseTemplate} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
+import {IRoyaltyModule} from "@storyprotocol/core/interfaces/modules/royalty/IRoyaltyModule.sol";
+import {IRoyaltyWorkflows} from "@storyprotocol/periphery/interfaces/workflows/IRoyaltyWorkflows.sol";
+import {MarketLib} from "./MarketLib.sol";
+import {PILFlavors} from "@storyprotocol/core/lib/PILFlavors.sol";
 import {PILTerms} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
 import {RoyaltyPolicyLAP} from "@storyprotocol/core/modules/royalty/policies/LAP/RoyaltyPolicyLAP.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {MarketLib} from "./MarketLib.sol";
 
-error UnknownTopic(bytes32 topic);
+    error UnknownTopic(bytes32 topic);
 error UnknownMatchingStrategy(bytes32 strategy);
 error AgentNotRegistered(address agent);
 error AgentAlreadyRegistered(address agent);
@@ -36,7 +39,7 @@ error AgentPaused(address agent);
 /**
  * @title ClaraMarketV1
  */
-contract ClaraMarketV1 is Context, ERC721Holder, Initializable {
+contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Holder, Initializable {
     // constants
     bytes32 internal constant TOPIC_TWEET = "tweet";
     bytes32 internal constant TOPIC_DISCORD = "discord";
@@ -344,12 +347,12 @@ contract ClaraMarketV1 is Context, ERC721Holder, Initializable {
         }
     }
 
-    function agent(address _agentId) public view returns (MarketLib.AgentInfo memory)
+    function agent(address _agentId) external view returns (MarketLib.AgentInfo memory)
     {
         return _getStorage().agents[_agentId];
     }
 
-    function agentTotals(address _agentId) public view returns (MarketLib.AgentTotals memory)
+    function agentTotals(address _agentId) external view returns (MarketLib.AgentTotals memory)
     {
         return _getStorage().agentTotals[_agentId];
     }
