@@ -109,13 +109,7 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); 
     }
 
-    function _getStorage() internal pure returns (ClaraMarketStorageData storage _sd) {
-        return ClaraMarketStorageV1.load();
-    }
 
-    function getPaymentsAddr() external view returns (address) {
-        return address(REVENUE_TOKEN);
-    }
 
     function withdraw()
     external {
@@ -347,16 +341,6 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         }
     }
 
-    function agent(address _agentId) external view returns (MarketLib.AgentInfo memory)
-    {
-        return _getStorage().agents[_agentId];
-    }
-
-    function agentTotals(address _agentId) external view returns (MarketLib.AgentTotals memory)
-    {
-        return _getStorage().agentTotals[_agentId];
-    }
-
     function sendResult(
         uint256 _taskId,
         string calldata _resultJSON
@@ -406,6 +390,57 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         emit TaskResultSent(originalTask.requester, _msgSender(), originalTask.id, taskResult);
     }
 
+    function agent(address _agentId) external view returns (MarketLib.AgentInfo memory)
+    {
+        return _getStorage().agents[_agentId];
+    }
+
+    function agentTotals(address _agentId) external view returns (MarketLib.AgentTotals memory)
+    {
+        return _getStorage().agentTotals[_agentId];
+    }
+    
+    function unassignedTasks() external view returns (uint256) {
+        _assertAgentRegistered();
+        return _getStorage().unassignedTasksLength[_getStorage().agents[_msgSender()].topic];
+    }
+    
+    function unassignedTasksLength(bytes32 _topic) external view returns(uint256) {
+        return _getStorage().unassignedTasksLength[_topic];
+    }
+    
+    function withdrawalAmount(address _agentId) external view returns(uint256) {
+        return _getStorage().withdrawalAmount[_agentId];
+    }
+    
+    function tasksCounter() external view returns(uint256) {
+        return _getStorage().tasksCounter;
+    }
+
+    function tasksDeleted() external view returns (uint256) {
+        return _getStorage().tasksDeleted;
+    }
+
+    function taskById(uint256 id) external view returns (MarketLib.Task memory) {
+        return _getStorage().allTasks[id];
+    }
+
+    function tasksLength() external view returns (uint256) {
+        return _getStorage().allTasks.length;
+    }
+
+    function marketTotals() external view returns (MarketLib.MarketTotals memory) {
+        return _getStorage().marketTotals;
+    }
+
+    function isAgentPaused() external view returns (bool) {
+        _assertAgentRegistered();
+        return _getStorage().agents[_msgSender()].paused;
+    }
+
+    function getPaymentsAddr() external view returns (address) {
+        return address(REVENUE_TOKEN);
+    }
 
     function _loadTask(
         address _agentId,
@@ -416,7 +451,7 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         if (rewardDiff > 0) {
             _getStorage().withdrawalAmount[originalTask.requester] += rewardDiff;
         }
-        
+
         originalTask.reward = agentFee;
         originalTask.agentId = _agentId;
 
@@ -462,43 +497,6 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         emit TaskAssigned(originalTask.requester, _agentId, originalTask.id, originalTask);
     }
 
-    function unassignedTasks() external view returns (uint256) {
-        _assertAgentRegistered();
-        return _getStorage().unassignedTasksLength[_getStorage().agents[_msgSender()].topic];
-    }
-    
-    function unassignedTasksLength(bytes32 _topic) external view returns(uint256) {
-        return _getStorage().unassignedTasksLength[_topic];
-    }
-    
-    function withdrawalAmount(address _agentId) external view returns(uint256) {
-        return _getStorage().withdrawalAmount[_agentId];
-    }
-    
-    function tasksCounter() external view returns(uint256) {
-        return _getStorage().tasksCounter;
-    }
-
-    function tasksDeleted() external view returns (uint256) {
-        return _getStorage().tasksDeleted;
-    }
-
-    function taskById(uint256 id) external view returns (MarketLib.Task memory) {
-        return _getStorage().allTasks[id];
-    }
-
-    function tasksLength() external view returns (uint256) {
-        return _getStorage().allTasks.length;
-    }
-
-    function marketTotals() external view returns (MarketLib.MarketTotals memory) {
-        return _getStorage().marketTotals;
-    }
-
-    function isAgentPaused() external view returns (bool) {
-        _assertAgentRegistered();
-        return _getStorage().agents[_msgSender()].paused;
-    }
 
     function _agentInboxCount(address _agentId) private view returns (uint256) {
         MarketLib.AgentTotals memory tot = _getStorage().agentTotals[_agentId];
@@ -528,4 +526,7 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         require(_getStorage().agents[_msgSender()].paused == false, AgentPaused(_msgSender()));
     }
 
+    function _getStorage() internal pure returns (ClaraMarketStorageData storage _sd) {
+        return ClaraMarketStorageV1.load();
+    }
 }
