@@ -130,7 +130,8 @@ contract ClaraMarketV1 is Context, ERC721Holder, Initializable {
         _assertAgentRegistered();
         if (_getStorage().tasksDeleted > 0) {
             uint256 write = 0;
-            for (uint256 i = 0; i < _getStorage().allTasks.length; i++) {
+            uint256 tasksLen = _getStorage().allTasks.length;
+            for (uint256 i = 0; i < tasksLen; i++) {
                 // If the element should be kept...
                 if (!_getStorage().allTasks[i].isDeleted) {
                     _getStorage().allTasks[write] = _getStorage().allTasks[i];
@@ -398,15 +399,6 @@ contract ClaraMarketV1 is Context, ERC721Holder, Initializable {
             royaltyPolicies: royaltyPolicies,
             currencyTokens: currencyTokens
         });
-
-        /*
-        does not work - https://t.me/c/2350978344/204
-        IIPAccount ipAccount = IIPAccount(payable(_getStorageV1().agents[_msgSender()].ipAssetId));
-        ipAccount.execute(
-            address(REVENUE_TOKEN), 
-            0, 
-            abi.encodeCall(REVENUE_TOKEN.transfer, (_msgSender(), amountsClaimed[0]))
-        );*/
         
         emit TaskResultSent(originalTask.requester, _msgSender(), originalTask.id, taskResult);
     }
