@@ -112,26 +112,18 @@ contract ClaraMarketTest is Test {
         });
         
         vm.stopPrank();
-        (   bool exists,            // ensures we know if the agent is registered
-            bool paused,
-            address id, // agent's wallet
-            address ipAssetId,
-            uint256 storedFee,            // how much an agent charges for the assigned tasks
-            uint256 canNftTokenId,
-            uint256 licenceTermsId,
-            bytes32 storedTopic,           // e.g. "tweet", "discord", ...
-            string memory storedMetadata
-        ) = market.agents(agent_1);
 
-        assertTrue(exists, "Agent should exist after registration");
-        assertFalse(paused, "Agent should not be paused");
-        assertEq(id, agent_1, "Agent address mismatch");
-        assertEq(storedTopic, "chat", "Agent topic mismatch");
-        assertEq(storedFee, 50 ether, "Agent fee mismatch");
-        assertEq(storedMetadata, "some metadata", "Agent metadata mismatch");
-        assertEq(ipAssetId, expectedIpId, "IP Asset ID mismatch");
-        assertEq(canNftTokenId, expectedTokenId, "Token ID mismatch");
-        assertEq(licenceTermsId, attachedLicenseTermsId, "License terms ID mismatch");
+        MarketLib.AgentInfo memory agent = market.agent(agent_1);
+
+        assertTrue(agent.exists, "Agent should exist after registration");
+        assertFalse(agent.paused, "Agent should not be paused");
+        assertEq(agent.id, agent_1, "Agent address mismatch");
+        assertEq(agent.topic, "chat", "Agent topic mismatch");
+        assertEq(agent.fee, 50 ether, "Agent fee mismatch");
+        assertEq(agent.metadata, "some metadata", "Agent metadata mismatch");
+        assertEq(agent.ipAssetId, expectedIpId, "IP Asset ID mismatch");
+        assertEq(agent.canNftTokenId, expectedTokenId, "Token ID mismatch");
+        assertEq(agent.licenceTermsId, attachedLicenseTermsId, "License terms ID mismatch");
     }
 
     function testMultitaskSkip() public {
@@ -185,26 +177,14 @@ contract ClaraMarketTest is Test {
         assertEq(market.withdrawalAmount(agent_1), 0, "Should have 0 WIP to withdraw");
         vm.stopPrank();
         
-        (uint256 requested2,
-            uint256 assigned2,
-            uint256 done2,
-            uint256 rewards2
-        ) = market.agentTotals(agent_2);
-        assertEq(assigned2, 1, "Agent 2 should have 1 task assigned");
+        MarketLib.AgentTotals memory agentTotals_2 = market.agentTotals(agent_2);
+        assertEq(agentTotals_2.assigned, 1, "Agent 2 should have 1 task assigned");
 
-        (uint256 requested3,
-            uint256 assigned3,
-            uint256 done3,
-            uint256 rewards3
-        ) = market.agentTotals(agent_3);
-        assertEq(assigned3, 1, "Agent 3 should have 1 task assigned");
+        MarketLib.AgentTotals memory agentTotals_3 = market.agentTotals(agent_3);
+        assertEq(agentTotals_3.assigned, 1, "Agent 3 should have 1 task assigned");
 
-        (uint256 requested4,
-            uint256 assigned4,
-            uint256 done4,
-            uint256 rewards4
-        ) = market.agentTotals(agent_4);
-        assertEq(assigned4, 1, "Agent 4 should have 1 task assigned");
+        MarketLib.AgentTotals memory agentTotals_4 = market.agentTotals(agent_4);
+        assertEq(agentTotals_4.assigned, 1, "Agent 4 should have 1 task assigned");
 
         vm.startPrank(agent_2);
         market.sendResult(1, "whatever");
@@ -232,38 +212,22 @@ contract ClaraMarketTest is Test {
         
         vm.stopPrank();
         
-        (uint256 requested2_2,
-            uint256 assigned2_2,
-            uint256 done2_2,
-            uint256 rewards2_2
-        ) = market.agentTotals(agent_2);
-        assertEq(assigned2_2, 2, "Agent 2 should have 2 tasks assigned");
-
-        (uint256 requested3_2,
-            uint256 assigned3_2,
-            uint256 done3_2,
-            uint256 rewards3_2
-        ) = market.agentTotals(agent_3);
-        assertEq(assigned3_2, 2, "Agent 3 should have 2 tasks assigned");
-
-        (uint256 requested4_2,
-            uint256 assigned4_2,
-            uint256 done4_2,
-            uint256 rewards4_2
-        ) = market.agentTotals(agent_4);
-        assertEq(assigned4_2, 2, "Agent 4 should have 2 tasks assigned");
+        MarketLib.AgentTotals memory agentTotals_2_2 = market.agentTotals(agent_2);
+        assertEq(agentTotals_2_2.assigned, 2, "Agent 2 should have 2 tasks assigned");
+        
+        MarketLib.AgentTotals memory agentTotals_3_2 = market.agentTotals(agent_3);
+        assertEq(agentTotals_3_2.assigned, 2, "Agent 3 should have 2 tasks assigned");
+        
+        MarketLib.AgentTotals memory agentTotals_4_2 = market.agentTotals(agent_4);
+        assertEq(agentTotals_4_2.assigned, 2, "Agent 4 should have 2 tasks assigned");
 
         vm.startPrank(agent_2);
         market.sendResult(4, "whatever");
         market.loadNextTask();
         vm.stopPrank();
-        (uint256 requested2_3,
-            uint256 assigned2_3,
-            uint256 done2_3,
-            uint256 rewards2_3
-        ) = market.agentTotals(agent_2);
+        MarketLib.AgentTotals memory agentTotals_2_3 = market.agentTotals(agent_2);
         // because max tasks per agent is 2.
-        assertEq(assigned2_2, 2, "Agent 2 should have 2 tasks assigned");
+        assertEq(agentTotals_2_3.assigned, 2, "Agent 2 should have 2 tasks assigned");
 
         vm.startPrank(agent_5);
         market.registerAgentProfile(50 ether, "chat", "some metadata 5");
@@ -274,14 +238,10 @@ contract ClaraMarketTest is Test {
         assertEq(market.unassignedTasks(), 2, "There should be 2 unassigned tasks");
         assertEq(market.unassignedTasksLength("chat"), 2, "There should be 2 unassigned tasks");
         vm.stopPrank();
-        
-        (uint256 requested5,
-            uint256 assigned5,
-            uint256 done5,
-            uint256 rewards5
-        ) = market.agentTotals(agent_5);
-        assertEq(assigned5, 2, "Agent 5 should have 2 tasks assigned");
-        assertEq(done5, 2, "Agent 5 should have 2 tasks done");
+
+        MarketLib.AgentTotals memory totals5 = market.agentTotals(agent_5);
+        assertEq(totals5.assigned, 2, "Agent 5 should have 2 tasks assigned");
+        assertEq(totals5.done, 2, "Agent 5 should have 2 tasks done");
 
         vm.startPrank(agent_6);
         market.registerAgentProfile(25 ether, "chat", "some metadata 6");
@@ -293,30 +253,12 @@ contract ClaraMarketTest is Test {
         assertEq(market.unassignedTasksLength("chat"), 0, "There should be no unassigned tasks");
         vm.stopPrank();
 
-        (uint256 requested6,
-            uint256 assigned6,
-            uint256 done6,
-            uint256 rewards6
-        ) = market.agentTotals(agent_6);
-        assertEq(assigned5, 2, "Agent 6 should have 2 tasks assigned");
-        assertEq(done5, 2, "Agent 6 should have 2 tasks done");
+        MarketLib.AgentTotals memory totals6 = market.agentTotals(agent_6);
+        assertEq(totals5.assigned, 2, "Agent 6 should have 2 tasks assigned");
+        assertEq(totals5.done, 2, "Agent 6 should have 2 tasks done");
         
-        (uint256 id,                  // unique task ID 
-        uint256 parentTaskId,        // parent task ID - set only for multitasks
-        uint256 contextId,           // used in chat to group tasks
-        uint256 blockNumber,        // block.number// who created the task
-        uint256 reward_1,             // reward for fulfilling the task
-        uint256 childTokenId,
-        uint256 maxRepeatedPerAgent,
-        address requester,
-        address agentId,             // the assigned agent 
-        address childIpId,
-        bytes32 topic,               // e.g. "chat"
-        bool isMultiTask,
-        bool isDeleted, // marks task as already assigned (in case of multitask - all instanaces were assigned)
-        string memory payload)             // arbitrary JSON or IPFS/Arweave txId?)
-        = market.allTasks(0);
-        assertEq(isDeleted, true, "Task should be deleted");
+        MarketLib.Task memory task = market.taskById(0);
+        assertEq(task.isDeleted, true, "Task should be deleted");
         
         assertEq(market.tasksDeleted(), 4, "should have 4 tasks deleted");
         assertEq(market.tasksLength(), 4, "should have 4 tasks");
@@ -458,19 +400,11 @@ contract ClaraMarketTest is Test {
         market.sendResult(assignedTaskId, resultJSON);
 
 
-        (bool exists,            // ensures we know if the agent is registered
-        bool paused,
-        address id, // agent's wallet
-        address ipAssetId,
-        uint256 fee,            // how much an agent charges for the assigned tasks
-        uint256 canNftTokenId,
-        uint256 licenceTermsId,
-        bytes32 topic,           // e.g. "tweet", "discord", ...
-        string memory metadata) = market.agents(agent_1);
+        MarketLib.AgentInfo memory agent = market.agent(agent_1);
 
         uint256 currentAgentBalance = revToken.balanceOf(agent_1);
-        assertEq(revToken.balanceOf(ipAssetId), 100 ether);
-        IIPAccount ipAccount = IIPAccount(payable(ipAssetId));
+        assertEq(revToken.balanceOf(agent.ipAssetId), 100 ether);
+        IIPAccount ipAccount = IIPAccount(payable(agent.ipAssetId));
         ipAccount.execute(
             address(revToken),
             0,
@@ -479,22 +413,18 @@ contract ClaraMarketTest is Test {
         vm.stopPrank();
 
         assertEq(revToken.balanceOf(agent_1), currentAgentBalance + 100 ether);
-        assertEq(revToken.balanceOf(ipAssetId), 0);
+        assertEq(revToken.balanceOf(agent.ipAssetId), 0);
 
 
-        (uint256 requested,
-            uint256 assigned,
-            uint256 done,
-            uint256 rewards
-        ) = market.agentTotals(agent_1);
-        assertEq(requested, 0, "AgentA never requested tasks");
-        assertEq(assigned, 1, "AgentA should have 1 assigned task");
-        assertEq(done, 1, "AgentA should have done 1 task");
-        assertEq(rewards, 100 ether, "AgentA's total rewards mismatch");
+        MarketLib.AgentTotals memory agentTotals = market.agentTotals(agent_1);
+        assertEq(agentTotals.requested, 0, "AgentA never requested tasks");
+        assertEq(agentTotals.assigned, 1, "AgentA should have 1 assigned task");
+        assertEq(agentTotals.done, 1, "AgentA should have done 1 task");
+        assertEq(agentTotals.rewards, 100 ether, "AgentA's total rewards mismatch");
 
-        (uint256 marketDone, uint256 marketRewards) = market.marketTotals();
-        assertEq(marketDone, 1, "marketTotals done mismatch");
-        assertEq(marketRewards, 100 ether, "marketTotals rewards mismatch");
+        MarketLib.MarketTotals memory marketTotals = market.marketTotals();
+        assertEq(marketTotals.done, 1, "marketTotals done mismatch");
+        assertEq(marketTotals.rewards, 100 ether, "marketTotals rewards mismatch");
     }
 
 
