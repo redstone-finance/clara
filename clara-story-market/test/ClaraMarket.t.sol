@@ -427,8 +427,147 @@ contract ClaraMarketTest is Test {
         assertEq(marketTotals.rewards, 100 ether, "marketTotals rewards mismatch");
     }
 
+    function testViewUnassignedTasks() public {
+        IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+
+        vm.startPrank(agent_1);
+        market.registerAgentProfile(50 ether, "chat", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        market.registerAgentProfile(50 ether, "chat", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_1);
+        revToken.approve(address(market), 500 ether);
+         
+        uint256 reward = 100 ether;
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "task payload"
+        );
+
+        uint256 reward_2 = 50 ether;
+        market.registerTask(
+            reward_2,
+            0,
+            "tweet",
+            "task payload"
+        );
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        revToken.approve(address(market), 500 ether);
+
+        uint256 reward_3 = 25 ether;
+        market.registerTask(
+            reward_3,
+            0,
+            "nft",
+            "task payload"
+        );
+        vm.stopPrank();
+
+
+        MarketLib.Task[] memory tasks = market.allUnassignedTasks();
+        assertEq(tasks[0].topic, "chat");
+        assertEq(tasks[0].reward, reward);
+        assertEq(tasks[1].topic, "tweet");
+        assertEq(tasks[1].reward, reward_2);
+        assertEq(tasks[2].topic, "nft");
+        assertEq(tasks[2].reward, reward_3);
+        assertEq(tasks.length, 3);
+
+
+        MarketLib.Task[] memory tasksPerAgent = market.allUnassignedTasks(agent_1);
+        assertEq(tasksPerAgent[0].topic, "chat");
+        assertEq(tasksPerAgent[0].reward, reward);
+        assertEq(tasksPerAgent[1].topic, "tweet");
+        assertEq(tasksPerAgent[1].reward, reward_2);
+        assertEq(tasksPerAgent.length, 2);
+    }
+
+    function testDeleteTasks() public {
+        IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+
+        vm.startPrank(agent_1);
+        market.registerAgentProfile(50 ether, "chat", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_1);
+        revToken.approve(address(market), 500 ether);
+
+        uint256 reward = 100 ether;
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "task payload"
+        );
+
+        uint256 reward_2 = 50 ether;
+        market.registerTask(
+            reward_2,
+            0,
+            "tweet",
+            "task payload"
+        );
+
+        MarketLib.Task[] memory tasks = market.allUnassignedTasks();
+        assertEq(tasks.length, 2);
+        uint256[] memory taskIds = new uint256[](tasks.length);
+        for (uint256 i = 0; i < tasks.length; i++) {
+            taskIds[i] = tasks[i].id;
+        }
+        uint256 currentAgentBalance = revToken.balanceOf(agent_1);
+        market.deleteTasks(taskIds);
+        vm.stopPrank();
+        assertEq(market.tasksDeleted(), 2);
+        uint256 newAgentBalance = revToken.balanceOf(agent_1);
+        assertEq(newAgentBalance - currentAgentBalance, 150 ether);
+    }
+
+    function testDeleteTasksNonOwner() public {
+        IPAssetRegistry IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
+
+        vm.startPrank(agent_1);
+        market.registerAgentProfile(50 ether, "chat", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        market.registerAgentProfile(100 ether, "tweet", "some metadata");
+        vm.stopPrank();
+
+        vm.startPrank(agent_1);
+        revToken.approve(address(market), 500 ether);
+
+        uint256 reward = 100 ether;
+        market.registerTask(
+            reward,
+            0,
+            "chat",
+            "task payload"
+        );
+        vm.stopPrank();
+
+        vm.startPrank(agent_2);
+        MarketLib.Task[] memory tasks = market.allUnassignedTasks();
+        assertEq(tasks.length, 1);
+        uint256[] memory taskIds = new uint256[](tasks.length);
+        for (uint256 i = 0; i < tasks.length; i++) {
+            taskIds[i] = tasks[i].id;
+        }
+        vm.expectRevert(UnauthorizedAccess.selector);
+        market.deleteTasks(taskIds);
+        vm.stopPrank();
+        assertEq(market.tasksDeleted(), 0);
+    }
 
     event RegisteredAgent(address indexed agent, MarketLib.AgentInfo agentInfo);
     event TaskAssigned(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.Task task);
     event TaskResultSent(address indexed requestingAgent, address indexed assignedAgent, uint256 indexed taskId, MarketLib.TaskResult taskResult);
+
+    error UnauthorizedAccess();
 }
