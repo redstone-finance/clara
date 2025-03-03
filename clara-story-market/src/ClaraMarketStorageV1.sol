@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {MarketLib} from "./MarketLib.sol";
 
 struct ClaraMarketStorageData {
+    address owner;
     uint256 agentsLength;
     uint256 tasksDeleted;
     uint256 tasksCounter;

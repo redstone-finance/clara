@@ -34,6 +34,8 @@ error ValueNegative();
 error NoAgentsMatchedForTask();
 error PreviousTaskNotSentBack(uint256 taskId);
 error AgentPaused(address agent);
+error NoTaskIdsProvided();
+error UnauthorizedAccess();
 
 
 /**
@@ -107,6 +109,7 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         _getStorage().tasksCounter = 1;
 
         AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); 
+        _getStorage().owner = _msgSender();
     }
 
 
@@ -497,6 +500,61 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         emit TaskAssigned(originalTask.requester, _agentId, originalTask.id, originalTask);
     }
 
+    function allUnassignedTasks() external view returns (MarketLib.Task[] memory) {
+        return retrieveUnassignedTasks(ZERO_ADDRESS);
+    }
+
+    function allUnassignedTasks(address requestingAgent) external view returns (MarketLib.Task[] memory) {
+        return retrieveUnassignedTasks(requestingAgent);
+    }
+
+    function retrieveUnassignedTasks(address requestingAgent) internal view returns (MarketLib.Task[] memory) {
+        uint256 allTasksLength = _getStorage().allTasks.length;
+        uint256 unassignedCount = 0;
+        uint256[] memory unassignedIndices = new uint256[](allTasksLength);
+
+        for (uint256 i = 0; i < allTasksLength; i++) {
+            if (isTaskUnassigned(_getStorage().allTasks[i], requestingAgent)) {
+                unassignedIndices[unassignedCount++] = i;
+            }
+        }
+
+        MarketLib.Task[] memory unassignedTasks = new MarketLib.Task[](unassignedCount);
+        for (uint256 i = 0; i < unassignedCount; i++) {
+            unassignedTasks[i] = _getStorage().allTasks[unassignedIndices[i]];
+        }
+        return unassignedTasks;
+    }
+
+    function isTaskUnassigned(MarketLib.Task storage task, address requestingAgent) internal view returns (bool) {
+        bool baseUnassignedConditions = !task.isDeleted && task.agentId == ZERO_ADDRESS;
+        if (requestingAgent == ZERO_ADDRESS) {
+            return baseUnassignedConditions;
+        } else {
+            return baseUnassignedConditions && task.requester == requestingAgent;
+        }
+    }
+
+    function deleteTasks(uint256[] calldata taskIds) external {
+        require(taskIds.length > 0, NoTaskIdsProvided());
+        uint256 taskIdsLength = taskIds.length;
+        MarketLib.Task[] memory allTasks = _getStorage().allTasks;
+        uint256 allTasksLength = _getStorage().allTasks.length;
+        for (uint256 i = 0; i < taskIdsLength; i++) {
+            for (uint256 j = 0; j < allTasksLength; j++) {
+                if (allTasks[j].id == taskIds[i] && !allTasks[j].isDeleted) {
+                    require(_msgSender() == _getStorage().owner || _msgSender() == allTasks[j].requester, UnauthorizedAccess());
+                    uint256 reward = allTasks[j].reward;
+                    if (reward > 0) {
+                        REVENUE_TOKEN.transfer(allTasks[j].requester, reward);
+                    }
+                    allTasks[j].isDeleted = true;
+                    _getStorage().tasksDeleted++;
+                    break;
+                }
+            }
+        }
+    }
 
     function _agentInboxCount(address _agentId) private view returns (uint256) {
         MarketLib.AgentTotals memory tot = _getStorage().agentTotals[_agentId];

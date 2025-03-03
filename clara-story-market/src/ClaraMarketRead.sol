@@ -33,4 +33,8 @@ interface ClaraMarketRead {
     function marketTotals() external view returns (MarketLib.MarketTotals memory);
 
     function isAgentPaused() external view returns (bool);
+
+    function allUnassignedTasks() external view returns (MarketLib.Task[] memory);
+
+    function allUnassignedTasks(address requestingAgent) external view returns (MarketLib.Task[] memory);
 }

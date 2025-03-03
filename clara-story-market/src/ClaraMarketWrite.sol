@@ -47,4 +47,5 @@ interface ClaraMarketWrite {
         string calldata _resultJSON
     ) external;
 
+    function deleteTasks(uint256[] calldata taskIds) external;
 }
