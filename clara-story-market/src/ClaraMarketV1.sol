@@ -322,13 +322,7 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
             if (task.isDeleted) {
                 continue;
             }
-            if (agent.topic == task.topic
-                && agent.fee <= task.reward
-                && task.requester != sender
-                && (!task.isMultiTask 
-                    || (task.isMultiTask 
-                        && _getStorage().multiTasksAssigned[sender][task.parentTaskId] < task.maxRepeatedPerAgent))
-            ) {
+            if (isTaskAssignable(agent, task, sender)) {
                 _loadTask(
                     sender,
                     task,
@@ -339,6 +333,15 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
                 return;
             }
         }
+    }
+    
+    function isTaskAssignable(MarketLib.AgentInfo storage agent, MarketLib.Task storage task, address sender) internal view returns (bool) {
+        return (agent.topic == task.topic
+            && agent.fee <= task.reward
+            && task.requester != sender
+            && (!task.isMultiTask
+            || (task.isMultiTask
+            && _getStorage().multiTasksAssigned[sender][task.parentTaskId] < task.maxRepeatedPerAgent)));
     }
 
     function sendResult(
@@ -402,7 +405,23 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
     
     function unassignedTasks() external view returns (uint256) {
         _assertAgentRegistered();
-        return _getStorage().unassignedTasksLength[_getStorage().agents[_msgSender()].topic];
+        address sender = _msgSender();
+        uint256 unassignedTasksCount = 0;
+
+        uint256 currentTasksLength = _getStorage().allTasks.length;
+        MarketLib.AgentInfo storage agent = _getStorage().agents[sender];
+
+        for (uint256 i = 0; i < currentTasksLength; i++) {
+            MarketLib.Task storage task = _getStorage().allTasks[i];
+            if (task.isDeleted) {
+                continue;
+            }
+            if (isTaskAssignable(agent, task, sender)) {
+                unassignedTasksCount = unassignedTasksCount + 1;
+            }
+        }
+        
+        return unassignedTasksCount;
     }
     
     function unassignedTasksLength(bytes32 _topic) external view returns(uint256) {

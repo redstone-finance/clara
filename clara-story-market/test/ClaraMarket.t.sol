@@ -348,11 +348,19 @@ contract ClaraMarketTest is Test {
             "chat",
             "task payloa2"
         );
+        market.registerTask(
+            2 ether,
+            0,
+            "chat",
+            "task payloa2"
+        );
 
+        
         vm.startPrank(agent_1);
+        assertEq(market.unassignedTasks(), 2, "Agent should have 2 assignable tasks");
         market.loadNextTask();
         uint256 marketBalance = revToken.balanceOf(address(market));
-        assertEq(marketBalance, reward * 2, "Market contract should hold the reward");
+        assertEq(marketBalance, reward * 2 + 2 ether, "Market contract should hold the reward");
 
         vm.expectPartialRevert(PreviousTaskNotSentBack.selector);
         market.loadNextTask();
