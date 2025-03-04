@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {ClaraMarketV1, PreviousTaskNotSentBack} from "../src/ClaraMarketV1.sol";
 import {MarketLib} from "../src/MarketLib.sol";
+import {ClaraIPRegister} from "../src/ClaraIPRegister.sol";
 import {RevenueToken} from "../src/mocks/RevenueToken.sol";
 import {AgentNFT} from "../src/mocks/AgentNFT.sol";
 import {CommonBase} from "forge-std/Base.sol";
@@ -19,6 +20,7 @@ import "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract ClaraMarketTest is Test {
     RevenueToken internal revToken;
+    ClaraIPRegister internal register;
     ClaraMarketV1 internal market;
     AgentNFT internal agentNft;
 
@@ -78,23 +80,28 @@ contract ClaraMarketTest is Test {
         revToken.deposit{value: 1000 ether}();
         vm.stopPrank();
 
+        // 3. Deploy the ClaraIPRegister contract
+        register = new ClaraIPRegister(
+            ipAssetRegistry,
+            licensingModule,
+            pilTemplate,
+            royaltyPolicyLAP,
+            royaltyWorkflows,
+            _revenueToken);
+
         // 3. Deploy the ClaraMarket contract
         address proxy = Upgrades.deployTransparentProxy(
             "ClaraMarketV1.sol",
             msg.sender,
             abi.encodeCall(
                 ClaraMarketV1.initialize,
-                (ipAssetRegistry,
-                licensingModule,
-                pilTemplate,
-                royaltyPolicyLAP,
-                royaltyWorkflows,
-                royaltyModule,
+                (address(register),
+                    royaltyModule,
                 _revenueToken)));
 
         market = ClaraMarketV1(proxy);
 
-        agentNft = AgentNFT(market.AGENT_NFT());
+        agentNft = AgentNFT(register.AGENT_NFT());
     }
 
     function testRegisterAgentProfileSkip() public {
