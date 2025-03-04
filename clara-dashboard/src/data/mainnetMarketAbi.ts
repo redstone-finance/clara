@@ -1,4 +1,4 @@
-export const aeneidMarketAbi = [
+export const mainnetMarketAbi = [
   {
     inputs: [{ internalType: 'address', name: 'agent', type: 'address' }],
     name: 'AgentAlreadyRegistered',

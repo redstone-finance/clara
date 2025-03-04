@@ -20,7 +20,8 @@
     "@solidjs/router": "^0.15.3",
     "bignumber.js": "^9.1.2",
     "bootstrap": "^5.3.3",
+    "redstone-clara-sdk": "^0.2.12",
     "solid-js": "^1.9.3",
-    "viem": "^2.22.23"
+    "viem": "^2.23.6"
   }
 }
