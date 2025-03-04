@@ -7,16 +7,14 @@ import "./ClaraMarketRead.sol";
 import "./ClaraMarketStorageV1.sol";
 import "./ClaraMarketWrite.sol";
 import "./QueueLib.sol";
+import "./ClaraIPRegister.sol";
 import "./mocks/AgentNFT.sol";
 import "./mocks/RevenueToken.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-// import { IIPAccount } from "@storyprotocol/core/interfaces/IIPAccount.sol";
-
 import {ILicensingModule} from "@storyprotocol/core/interfaces/modules/licensing/ILicensingModule.sol";
 import {IPAssetRegistry} from "@storyprotocol/core/registries/IPAssetRegistry.sol";
-// import {console} from "forge-std/console.sol";
 import {IPILicenseTemplate} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
 import {IRoyaltyModule} from "@storyprotocol/core/interfaces/modules/royalty/IRoyaltyModule.sol";
 import {IRoyaltyWorkflows} from "@storyprotocol/periphery/interfaces/workflows/IRoyaltyWorkflows.sol";
@@ -25,7 +23,7 @@ import {PILFlavors} from "@storyprotocol/core/lib/PILFlavors.sol";
 import {PILTerms} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
 import {RoyaltyPolicyLAP} from "@storyprotocol/core/modules/royalty/policies/LAP/RoyaltyPolicyLAP.sol";
 
-    error UnknownTopic(bytes32 topic);
+error UnknownTopic(bytes32 topic);
 error UnknownMatchingStrategy(bytes32 strategy);
 error AgentNotRegistered(address agent);
 error AgentAlreadyRegistered(address agent);
@@ -51,17 +49,11 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
     bytes32 internal constant TOPIC_NONE = "none";
     
     address internal constant ZERO_ADDRESS = address(0);
-    
 
     // public
-    IPAssetRegistry public IP_ASSET_REGISTRY;
-    ILicensingModule public LICENSING_MODULE;
-    IPILicenseTemplate public PIL_TEMPLATE;
-    RoyaltyPolicyLAP public ROYALTY_POLICY_LAP;
-    IRoyaltyWorkflows public ROYALTY_WORKFLOWS;
     IRoyaltyModule public ROYALTY_MODULE;
     RevenueToken public REVENUE_TOKEN;
-    AgentNFT public AGENT_NFT;
+    ClaraIPRegister public CLARA_IP_REGISTER;
 
     // events
     event AgentRegistered(address indexed agent, MarketLib.AgentInfo agentInfo);
@@ -83,21 +75,13 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
     event RewardWithdrawn(address agent, uint256 amount);
 
     function initialize(
-        address ipAssetRegistry,
-        address licensingModule,
-        address pilTemplate,
-        address royaltyPolicyLAP,
-        address royaltyWorkflows,
+        address claraIPRegister,
         address royaltyModule,
         address payable _revenueToken) public initializer {
         
         REVENUE_TOKEN = RevenueToken(_revenueToken);
-        IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
-        LICENSING_MODULE = ILicensingModule(licensingModule);
-        PIL_TEMPLATE = IPILicenseTemplate(pilTemplate);
-        ROYALTY_POLICY_LAP = RoyaltyPolicyLAP(royaltyPolicyLAP);
-        ROYALTY_WORKFLOWS = IRoyaltyWorkflows(royaltyWorkflows);
         ROYALTY_MODULE = IRoyaltyModule(royaltyModule);
+        CLARA_IP_REGISTER = ClaraIPRegister(claraIPRegister);
         
         _getStorage().topics[TOPIC_TWEET] = true;
         _getStorage().topics[TOPIC_DISCORD] = true;
@@ -107,12 +91,9 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         _getStorage().topics[TOPIC_NONE] = true;
 
         _getStorage().tasksCounter = 1;
-
-        AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN"); 
+        
         _getStorage().owner = _msgSender();
     }
-
-
 
     function withdraw()
     external {
@@ -156,22 +137,8 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         require(_getStorage().agents[_msgSender()].exists == false, AgentAlreadyRegistered(_msgSender()));
         _assertTopic(_topic);
         require(_fee >= 0, ValueNegative());
-
-        uint256 tokenId = AGENT_NFT.mint(address(this));
-        address ipId = IP_ASSET_REGISTRY.register(block.chainid, address(AGENT_NFT), tokenId);
-        uint256 licenseTermsId = PIL_TEMPLATE.registerLicenseTerms(
-            PILFlavors.commercialRemix({
-            mintingFee: 0,
-            commercialRevShare: 100 * 10 ** 6, // 100% - i.e. all royalties for the tasks (childIPs) are sent to the Agent assigned to this task
-            royaltyPolicy: address(ROYALTY_POLICY_LAP),
-            currencyToken: address(REVENUE_TOKEN)
-        }));
         
-        // attach the license terms to the IP Asset
-        LICENSING_MODULE.attachLicenseTerms(ipId, address(PIL_TEMPLATE), licenseTermsId);
-
-        // transfer the NFT to the receiver so it owns the IPA
-        AGENT_NFT.transferFrom(address(this), _msgSender(), tokenId);
+        (uint256 tokenId, address ipId, uint256 licenseTermsId) = CLARA_IP_REGISTER.registerAgentProfile(_msgSender());
         
         _registerAgent();
         _getStorage().agents[_msgSender()] = MarketLib.AgentInfo({
@@ -376,22 +343,10 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
             result: _resultJSON
         });
 
+        address ipAssetId = _getStorage().agents[_msgSender()].ipAssetId;
         REVENUE_TOKEN.approve(address(ROYALTY_MODULE), originalTask.reward);
         ROYALTY_MODULE.payRoyaltyOnBehalf(originalTask.childIpId, address(this), address(REVENUE_TOKEN), originalTask.reward);
-
-        address[] memory childIpIds = new address[](1);
-        address[] memory royaltyPolicies = new address[](1);
-        address[] memory currencyTokens = new address[](1);
-        childIpIds[0] = originalTask.childIpId;
-        royaltyPolicies[0] = address(ROYALTY_POLICY_LAP);
-        currencyTokens[0] = address(REVENUE_TOKEN);
-        uint256[] memory amountsClaimed = ROYALTY_WORKFLOWS.claimAllRevenue({
-            ancestorIpId: _getStorage().agents[_msgSender()].ipAssetId,
-            claimer: _getStorage().agents[_msgSender()].ipAssetId,
-            childIpIds: childIpIds,
-            royaltyPolicies: royaltyPolicies,
-            currencyTokens: currencyTokens
-        });
+        CLARA_IP_REGISTER.claimAllRevenue(originalTask.childIpId, ipAssetId);
         
         emit TaskResultSent(originalTask.requester, _msgSender(), originalTask.id, taskResult);
     }
@@ -476,34 +431,11 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
 
         originalTask.reward = agentFee;
         originalTask.agentId = _agentId;
-
-        uint256 childTokenId = AGENT_NFT.mint(address(this));
-        address childIpId = IP_ASSET_REGISTRY.register(
-            block.chainid, address(AGENT_NFT), childTokenId);
-
-        // mint a license token from the parent
-        uint256 licenseTokenId = LICENSING_MODULE.mintLicenseTokens({
-            licensorIpId: _getStorage().agents[_agentId].ipAssetId,
-            licenseTemplate: address(PIL_TEMPLATE),
-            licenseTermsId: _getStorage().agents[_agentId].licenceTermsId,
-            amount: 1,
-            receiver: address(this),
-            royaltyContext: "", // for PIL, royaltyContext is empty string
-            maxMintingFee: 0,
-            maxRevenueShare: 0
-        });
-
-        uint256[] memory licenseTokenIds = new uint256[](1);
-        licenseTokenIds[0] = licenseTokenId;
-
-        // register the new child IPA as a derivative
-        // of the parent
-        LICENSING_MODULE.registerDerivativeWithLicenseTokens({
-            childIpId: childIpId,
-            licenseTokenIds: licenseTokenIds,
-            royaltyContext: "", // empty for PIL
-            maxRts: 0
-        });
+        
+        address licensorIpId = _getStorage().agents[_agentId].ipAssetId;
+        uint256 licenseTermsId = _getStorage().agents[_agentId].licenceTermsId;
+        (uint256 childTokenId, address childIpId) = CLARA_IP_REGISTER.setupTask(_agentId, licensorIpId, licenseTermsId);
+    
         originalTask.childIpId = childIpId;
         originalTask.childTokenId = childTokenId;
 
@@ -512,9 +444,6 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Hold
         if (originalTask.isMultiTask) {
             _getStorage().multiTasksAssigned[_agentId][originalTask.parentTaskId]++;
         }
-
-        // transfer the NFT to the receiver so it owns the child IPA
-        AGENT_NFT.transferFrom(address(this), _agentId, childTokenId);
 
         emit TaskAssigned(originalTask.requester, _agentId, originalTask.id, originalTask);
     }
