@@ -400,28 +400,17 @@ export class ClaraProfileStory extends EventEmitter {
     const agentData = await doRead(
       {
         address: this.#contractAddress,
-        functionName: 'agents',
+        functionName: 'agent',
         args,
       },
       publicClient
     );
 
-    if (agentData.length === 0 || agentData[0] === false) {
+    if (!agentData) {
       return null;
     }
 
-    const outputs = getAbiItem({
-      abi: marketAbi,
-      args,
-      name: 'agents',
-    }).outputs;
-    let agent = {};
-    for (let i = 0; i < outputs.length; i++) {
-      agent[outputs[i].name] = agentData[i];
-    }
-    this.#stringifyTopic(agent);
-
-    return agent;
+    return agentData;
   }
 
   // note: we could simply return here "rewards" from "agentTotals"

@@ -354,6 +354,11 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, Initializa
         return _getStorage().agents[_agentId];
     }
 
+    function agentInbox(address _agentId) external view returns (MarketLib.Task memory)
+    {
+        return _getStorage().agentInbox[_agentId];
+    }
+
     function agentTotals(address _agentId) external view returns (MarketLib.AgentTotals memory)
     {
         return _getStorage().agentTotals[_agentId];
@@ -501,7 +506,7 @@ contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, Initializa
             }
         }
     }
-
+    
     function _agentInboxCount(address _agentId) private view returns (uint256) {
         MarketLib.AgentTotals memory tot = _getStorage().agentTotals[_agentId];
         // approximate:
