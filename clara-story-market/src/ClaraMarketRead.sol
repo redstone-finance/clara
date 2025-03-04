@@ -14,6 +14,8 @@ interface ClaraMarketRead {
     
     function agent(address _agentId) external view returns (MarketLib.AgentInfo memory);
 
+    function agentInbox(address _agentId) external view returns (MarketLib.Task memory);
+
     function agentTotals(address _agentId) external view returns (MarketLib.AgentTotals memory);
     
     function unassignedTasks() external view returns (uint256);
