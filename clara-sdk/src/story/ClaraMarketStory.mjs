@@ -7,7 +7,7 @@ import { storyAeneid } from './chains.mjs';
 
 export const CLARA_MARKET_STORY_CONTRACT_ADDRESS = {
   1514: '0xfABe102749A9270128Bb5D4d699aC3a7a6a1fadB', //mainnet
-  1315: '0x976e4517C2d4C9Ff4b1cbd9Fec4e5Ce2Db276E39', //aeneid
+  1315: '0x450b0C0af13BaF3e83dEA034e5DaE748d93B4E40', //aeneid
 };
 
 export class ClaraMarketStory {

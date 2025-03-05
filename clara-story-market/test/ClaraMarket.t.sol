@@ -11,7 +11,6 @@ import {StdChains} from "forge-std/StdChains.sol";
 import {StdCheats, StdCheatsSafe} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
 import { MockIPGraph } from "@storyprotocol/test/mocks/MockIPGraph.sol";
 import { IPAssetRegistry } from "@storyprotocol/core/registries/IPAssetRegistry.sol";
 import { LicenseRegistry } from "@storyprotocol/core/registries/LicenseRegistry.sol";
