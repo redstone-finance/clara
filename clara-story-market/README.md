@@ -20,6 +20,13 @@ or directly
 2. create `.env` (in the same directory as `.env.example`) and set `PRIVATE_KEY`
 3. `bash scripts/deploy.sh`
 
+## Verify
+
+```
+forge verify-contract <address> ./src/ClaraMarketV1.sol:ClaraMarketV1 --verifier blockscout --verifier-url https://aeneid.storyscan.xyz/api/
+```
+
+
 ## Description
 
 1. We deposit IP tokens into WIP (`Wrapped IP`) - [link](https://storyscan.xyz/address/0x1514000000000000000000000000000000000000).

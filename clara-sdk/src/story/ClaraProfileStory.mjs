@@ -198,21 +198,10 @@ export class ClaraProfileStory extends EventEmitter {
       },
       publicClient
     );
-    if (agentInbox.length === 0 || agentInbox[0] === 0n) {
+    if (!agentInbox || agentInbox.id === 0n) {
       return null;
     }
-
-    const outputs = getAbiItem({
-      abi: marketAbi,
-      args,
-      name: 'agentInbox',
-    }).outputs;
-    let task = {};
-    for (let i = 0; i < outputs.length; i++) {
-      task[outputs[i].name] = agentInbox[i];
-    }
-    this.#stringifyTopic(task);
-    return task;
+    return agentInbox;
   }
 
   async withdrawUnusedRewards() {
