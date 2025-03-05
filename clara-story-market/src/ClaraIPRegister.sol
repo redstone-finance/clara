@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.26;
 
 
-import "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "./mocks/AgentNFT.sol";
 import "./mocks/RevenueToken.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ILicensingModule} from "@storyprotocol/core/interfaces/modules/licensing/ILicensingModule.sol";
 import {IPAssetRegistry} from "@storyprotocol/core/registries/IPAssetRegistry.sol";
 import {IPILicenseTemplate} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
@@ -15,7 +16,7 @@ import {PILFlavors} from "@storyprotocol/core/lib/PILFlavors.sol";
 import {PILTerms} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
 import {RoyaltyPolicyLAP} from "@storyprotocol/core/modules/royalty/policies/LAP/RoyaltyPolicyLAP.sol";
 
-contract ClaraIPRegister is ERC721Holder {
+contract ClaraIPRegister is ERC721Holder, Ownable {
 
     // public
     IPAssetRegistry public IP_ASSET_REGISTRY;
@@ -27,13 +28,13 @@ contract ClaraIPRegister is ERC721Holder {
     AgentNFT public AGENT_NFT;
 
     constructor(
-        address ipAssetRegistry, 
+        address ipAssetRegistry,
         address licensingModule,
-        address pilTemplate, 
-        address royaltyPolicyLAP,        
+        address pilTemplate,
+        address royaltyPolicyLAP,
         address royaltyWorkflows,
-        address payable _revenueToken) {
-        
+        address payable _revenueToken) Ownable(msg.sender) {
+
         IP_ASSET_REGISTRY = IPAssetRegistry(ipAssetRegistry);
         REVENUE_TOKEN = RevenueToken(_revenueToken);
         LICENSING_MODULE = ILicensingModule(licensingModule);
@@ -43,8 +44,9 @@ contract ClaraIPRegister is ERC721Holder {
         AGENT_NFT = new AgentNFT("CLARA AGENT IP NFT", "CAIN");
     }
 
-    function registerAgentProfile(address agent) external returns (uint256 tokenId, address ipId, uint256 licenseTermsId)
-    {
+    function registerAgentProfile(address agent) 
+    external onlyOwner 
+    returns (uint256 tokenId, address ipId, uint256 licenseTermsId) {
 
         tokenId = AGENT_NFT.mint(address(this));
         ipId = IP_ASSET_REGISTRY.register(block.chainid, address(AGENT_NFT), tokenId);
@@ -67,8 +69,9 @@ contract ClaraIPRegister is ERC721Holder {
     function setupTask(
         address agentId,
         address licensorIpId,
-        uint256 licenceTermsId
-    ) external returns (uint256 childTokenId, address childIpId) {
+        uint256 licenceTermsId) 
+    external onlyOwner 
+    returns (uint256 childTokenId, address childIpId) {
 
         childTokenId = AGENT_NFT.mint(address(this));
         childIpId = IP_ASSET_REGISTRY.register(
@@ -105,7 +108,7 @@ contract ClaraIPRegister is ERC721Holder {
 
     function claimAllRevenue(
         address childIpId,
-        address ipAssetId) external {
+        address ipAssetId) external onlyOwner {
 
         address[] memory childIpIds = new address[](1);
         address[] memory royaltyPolicies = new address[](1);

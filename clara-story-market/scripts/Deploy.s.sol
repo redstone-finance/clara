@@ -36,6 +36,8 @@ contract DeployScript is Script {
                 ClaraMarketV1.initialize,
                 (address(register), royaltyModule, _revenueToken))
         );
+
+        register.transferOwnership(address(ClaraMarketV1(transparentProxy)));
     }
 }
 

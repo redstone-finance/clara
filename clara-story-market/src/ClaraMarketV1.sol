@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "./ClaraMarketRead.sol";
 
 import "./ClaraMarketStorageV1.sol";
@@ -12,7 +11,6 @@ import "./mocks/AgentNFT.sol";
 import "./mocks/RevenueToken.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ILicensingModule} from "@storyprotocol/core/interfaces/modules/licensing/ILicensingModule.sol";
 import {IPAssetRegistry} from "@storyprotocol/core/registries/IPAssetRegistry.sol";
 import {IPILicenseTemplate} from "@storyprotocol/core/interfaces/modules/licensing/IPILicenseTemplate.sol";
@@ -39,7 +37,7 @@ error UnauthorizedAccess();
 /**
  * @title ClaraMarketV1
  */
-contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, ERC721Holder, Initializable {
+contract ClaraMarketV1 is Context, ClaraMarketRead, ClaraMarketWrite, Initializable {
     // constants
     bytes32 internal constant TOPIC_TWEET = "tweet";
     bytes32 internal constant TOPIC_DISCORD = "discord";

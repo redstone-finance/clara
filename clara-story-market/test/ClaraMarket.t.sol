@@ -100,7 +100,7 @@ contract ClaraMarketTest is Test {
                 _revenueToken)));
 
         market = ClaraMarketV1(proxy);
-
+        register.transferOwnership(address(market));
         agentNft = AgentNFT(register.AGENT_NFT());
     }
 
