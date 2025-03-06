@@ -201,6 +201,7 @@ export class ClaraProfileStory extends EventEmitter {
     if (!agentInbox || agentInbox.id === 0n) {
       return null;
     }
+    this.#stringifyTopic(agentInbox);
     return agentInbox;
   }
 
