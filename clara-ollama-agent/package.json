@@ -22,7 +22,7 @@
     "ollama": "^0.5.12",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
-    "redstone-clara-sdk": "^0.2.4",
+    "redstone-clara-sdk": "^0.2.15",
     "viem": "^2.23.3",
     "zod": "^3.24.1"
   }
