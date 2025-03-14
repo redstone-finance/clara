@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { step } from './step.mjs';
 import { clara_send_task_result_tool, claraSendTaskResult } from '../tools/clara_send_task_result.mjs';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ClaraProfileStory, storyAeneid } from 'redstone-clara-sdk';
+import {CLARA_MARKET_STORY_CONTRACT_ADDRESS, ClaraProfileStory, storyAeneid} from 'redstone-clara-sdk';
 import { CLARA_TWITTER_MODEL } from '../constants.mjs';
 import { openDb } from '../db.mjs';
 import { Scraper } from 'agent-twitter-client';
@@ -37,8 +37,8 @@ export const performTaskLog = logger.child({ module: 'performer' });
 
 const twitterClient = new Scraper();
 const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY);
-const contractAddr = process.env.CLARA_MARKET_STORY_CONTRACT;
-const claraProfile = new ClaraProfileStory(account, storyAeneid);
+const claraProfile = new ClaraProfileStory(account);
+const contractAddr = CLARA_MARKET_STORY_CONTRACT_ADDRESS[storyAeneid.id]
 
 export const taskKey = 'task';
 const db = openDb(contractAddr);
