@@ -8,7 +8,8 @@
     "model:create:market": "node models/create_clara_market_model.mjs",
     "model:create:twitter": "node models/create_clara_twitter_model.mjs",
     "agent:run:market": "node agents/Clara_Market_Agent.mjs",
-    "agent:run:twitter": "node agents/Clara_Twitter_Agent.mjs"
+    "agent:run:twitter": "node agents/Clara_Twitter_Agent.mjs",
+    "chroma": "docker run -v ./chroma-data:/chroma/chroma/ -p 8000:8000 chromadb/chroma"
   },
   "author": "",
   "license": "ISC",

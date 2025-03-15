@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 import fs from "node:fs";
 
-(async () => {
+export async function loadTop5Yappers() {
   const browser = await puppeteer.launch({
     headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security'],
@@ -16,7 +16,7 @@ import fs from "node:fs";
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
 
   console.log('Navigating to https://yaps.kaito.ai/pre-tge...');
-  await page.goto('https://yaps.kaito.ai/pre-tge', {
+  await page.goto('https://yaps.kaito.ai/', {
     waitUntil: 'networkidle2',
   });
 
@@ -56,4 +56,7 @@ import fs from "node:fs";
 
   console.log('Top 5 Twitter IDs:', top5TwitterIDs);
   await browser.close();
-})();
+  return top5TwitterIDs;
+}
+
+void loadTop5Yappers()

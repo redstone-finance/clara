@@ -12,14 +12,18 @@ const chromaCollectionName = "redstone_collection_demo_1";
 const ollamaContextWindow = 2048; // default context window size in ollama (in tokens)
 
 // docker pull chromadb/chroma
-// docker run -p 8000:8000 chromadb/chroma
-const chromaClient = new ChromaClient();
+// docker run -v ./chroma-data:/chroma/chroma/ -p 8000:8000 chromadb/chroma
+const chromaClient = new ChromaClient({ path: "http://localhost:8000" });
 console.log("Connected to Chroma Vector db");
 
 (async () => {
   console.log("Pulling models from ollama");
   await ollama.pull({model: llmModel});
   await ollama.pull({model: embeddingModel});
+  /*const collection = await chromaClient.getOrCreateCollection({
+    name: chromaCollectionName,
+    metadata: {description: "A collection for RAG with Ollama - RedStone Tokenomics"},
+  });*/
 
   const cheerioLoaderP = new CheerioWebBaseLoader(
     "https://blog.redstone.finance/2025/02/12/introducing-red-tokenomics/",
